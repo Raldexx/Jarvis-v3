@@ -25,7 +25,8 @@
         "minimizable": true,
         "closable": true,
         "minWidth": 380,
-        "minHeight": 600
+        "minHeight": 600,
+        "backgroundColor": "#00000000"
       }
     ],
     "trayIcon": {
