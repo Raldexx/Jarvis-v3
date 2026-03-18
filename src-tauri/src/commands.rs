@@ -205,6 +205,35 @@ fn find_spotify_title() -> Option<String> {
     unsafe { RESULT = None; EnumWindows(Some(cb), 0); RESULT.clone() }
 }
 
+#[derive(Serialize)]
+pub struct SystemInfo {
+    pub cpu_name:    String,
+    pub cpu_cores:   usize,
+    pub os_name:     String,
+    pub os_version:  String,
+    pub hostname:    String,
+    pub ram_total_gb: f64,
+}
+
+#[tauri::command]
+pub fn get_system_info() -> SystemInfo {
+    let mut sys = System::new_all();
+    sys.refresh_all();
+
+    let cpu_name = sys.cpus().first()
+        .map(|c| c.brand().trim().to_string())
+        .unwrap_or_else(|| "Unknown CPU".into());
+
+    let cpu_cores = sys.cpus().len();
+    let ram_total_gb = sys.total_memory() as f64 / 1_073_741_824.0;
+
+    let os_name    = System::name().unwrap_or_else(|| "Unknown".into());
+    let os_version = System::os_version().unwrap_or_else(|| "".into());
+    let hostname   = System::host_name().unwrap_or_else(|| "Unknown".into());
+
+    SystemInfo { cpu_name, cpu_cores, os_name, os_version, hostname, ram_total_gb }
+}
+
 #[tauri::command]
 pub fn system_action(action: String) -> Result<(), String> {
     match action.as_str() {

@@ -10,7 +10,37 @@
   let weatherText = '...';
   let spotifyPlaying = false, spotifyTrack = 'Not Playing', spotifyArtist = '';
   let recentTracks = []; // filled from Spotify window title history
-  let processList = [];
+  let processList = []; // kept for potential future use
+
+  // System info
+  let sysInfo = { cpu_name: '...', cpu_cores: 0, os_name: '...', os_version: '', hostname: '...', ram_total_gb: 0 };
+
+  // Notes
+  let notes = JSON.parse(localStorage.getItem('jarvis_notes') || '[]');
+  // [{ id, text, ts }]
+  let noteModal = false;
+  let noteInput = '';
+  let editingNote = null;
+
+  function saveNotes() { localStorage.setItem('jarvis_notes', JSON.stringify(notes)); }
+  function addNote() {
+    if (!noteInput.trim()) return;
+    if (editingNote !== null) {
+      notes = notes.map(n => n.id === editingNote ? { ...n, text: noteInput.trim(), ts: Date.now() } : n);
+      editingNote = null;
+    } else {
+      notes = [{ id: Date.now(), text: noteInput.trim(), ts: Date.now() }, ...notes];
+    }
+    noteInput = '';
+    saveNotes();
+  }
+  function deleteNote(id) { notes = notes.filter(n => n.id !== id); saveNotes(); }
+  function editNote(note) { editingNote = note.id; noteInput = note.text; }
+  function fmtNoteTs(ts) {
+    const d = new Date(ts);
+    return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' }) + ' ' +
+           d.toLocaleTimeString('en-GB', { hour:'2-digit', minute:'2-digit' });
+  }
   let errorMsg = '';
   let modal = null; // null | 'spotify' | 'settings' | 'stats' | 'actions'
   let darkTheme = false;
@@ -110,6 +140,12 @@
       { name: 'spotify.exe', cpu_percent: 1  + Math.random() },
     ];
     const sp = _m.spotify ? await inv('get_spotify') : null;
+
+    // System info - fetch once
+    if (sysInfo.cpu_name === '...') {
+      const si = await inv('get_system_info');
+      if (si) sysInfo = si;
+    }
     if (sp) {
       if (sp.playing && sp.track && sp.track !== spotifyTrack) {
         // new track started — push old one to history
@@ -343,24 +379,64 @@
     </button>
   </div>
 
-  <!-- ═══ PROCESSES ═══ -->
-  <div class="card procs-card">
-    <div class="sec-label">TOP PROCESSES</div>
-    {#each processList.slice(0,4) as p}
-      <div class="proc-row">
-        <span class="proc-name">{p.name}</span>
-        <div class="proc-track">
-          <div class="proc-fill" style="width:{Math.min(p.cpu_percent,100)}%; background:{colForPct(p.cpu_percent) || '#3b82f6'}"></div>
-        </div>
-        <span class="proc-pct">{p.cpu_percent.toFixed(1)}%</span>
+  <!-- ═══ SYSTEM INFO + NOTES ═══ -->
+  <div class="grid2">
+
+    <!-- System Info -->
+    <div class="card sysinfo-card">
+      <div class="sec-label">SYSTEM</div>
+      <div class="sysinfo-row">
+        <span class="sysinfo-key">CPU</span>
+        <span class="sysinfo-val" title={sysInfo.cpu_name}>{sysInfo.cpu_name.length > 22 ? sysInfo.cpu_name.slice(0,22)+'…' : sysInfo.cpu_name}</span>
       </div>
-    {/each}
+      <div class="sysinfo-row">
+        <span class="sysinfo-key">Cores</span>
+        <span class="sysinfo-val">{sysInfo.cpu_cores > 0 ? sysInfo.cpu_cores : '...'}</span>
+      </div>
+      <div class="sysinfo-row">
+        <span class="sysinfo-key">RAM</span>
+        <span class="sysinfo-val">{sysInfo.ram_total_gb > 0 ? sysInfo.ram_total_gb.toFixed(0)+' GB' : '...'}</span>
+      </div>
+      <div class="sysinfo-row">
+        <span class="sysinfo-key">OS</span>
+        <span class="sysinfo-val">{sysInfo.os_name} {sysInfo.os_version}</span>
+      </div>
+      <div class="sysinfo-row">
+        <span class="sysinfo-key">Host</span>
+        <span class="sysinfo-val">{sysInfo.hostname}</span>
+      </div>
+    </div>
+
+    <!-- Quick Notes -->
+    <button class="card notes-card no-drag" on:click={() => noteModal = true}>
+      <div class="sec-label notes-header">
+        NOTES
+        <span class="notes-count">{notes.length}</span>
+      </div>
+      {#if notes.length === 0}
+        <div class="notes-empty">Tap to add a note</div>
+      {:else}
+        <div class="notes-preview">
+          {#each notes.slice(0,3) as note}
+            <div class="note-preview-item">
+              <span class="note-preview-dot"></span>
+              <span class="note-preview-text">{note.text.length > 28 ? note.text.slice(0,28)+'…' : note.text}</span>
+            </div>
+          {/each}
+          {#if notes.length > 3}
+            <div class="notes-more">+{notes.length - 3} more</div>
+          {/if}
+        </div>
+      {/if}
+      <div class="notes-add-hint">+ Add note</div>
+    </button>
+
   </div>
 
   <!-- ═══ BUTTONS ═══ -->
   <div class="grid3 no-drag">
     <button class="btn-action" on:click={() => modal = 'settings'}>⚙ Settings</button>
-    <button class="btn-action" on:click={() => modal = 'stats'}>📊 Stats</button>
+    <button class="btn-action" on:click={() => modal = 'changelog'}>📋 Changelog</button>
     <button class="btn-action btn-dark" on:click={() => modal = 'actions'}>⚡ Actions</button>
   </div>
 
@@ -369,6 +445,59 @@
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <!-- MODALS -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+{#if noteModal}
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <div class="overlay" on:click|self={() => noteModal = false}>
+    <div class="mbox notes-mbox">
+      <div class="mbox-hdr">
+        <span class="mbox-title">QUICK NOTES</span>
+        <button class="mclose" on:click={() => { noteModal = false; editingNote = null; noteInput = ''; }}>✕</button>
+      </div>
+
+      <!-- Input -->
+      <div class="note-input-wrap no-drag">
+        <!-- svelte-ignore a11y-autofocus -->
+        <textarea
+          class="note-textarea"
+          placeholder="Write a note..."
+          bind:value={noteInput}
+          rows="3"
+          on:keydown={(e) => { if (e.key === 'Enter' && e.ctrlKey) addNote(); }}
+        ></textarea>
+        <div class="note-input-actions">
+          {#if editingNote !== null}
+            <button class="note-cancel-btn" on:click={() => { editingNote = null; noteInput = ''; }}>Cancel</button>
+          {/if}
+          <button class="note-save-btn" on:click={addNote}>
+            {editingNote !== null ? '✓ Update' : '+ Add'}
+          </button>
+        </div>
+        <div class="note-hint">Ctrl+Enter to save</div>
+      </div>
+
+      <!-- Notes list -->
+      <div class="notes-list">
+        {#if notes.length === 0}
+          <div class="notes-list-empty">No notes yet. Add one above!</div>
+        {:else}
+          {#each notes as note}
+            <div class="note-item {editingNote === note.id ? 'note-editing' : ''}">
+              <div class="note-item-text">{note.text}</div>
+              <div class="note-item-footer">
+                <span class="note-item-ts">{fmtNoteTs(note.ts)}</span>
+                <div class="note-item-actions">
+                  <button class="note-edit-btn" on:click={() => editNote(note)}>Edit</button>
+                  <button class="note-del-btn"  on:click={() => deleteNote(note.id)}>Delete</button>
+                </div>
+              </div>
+            </div>
+          {/each}
+        {/if}
+      </div>
+    </div>
+  </div>
+{/if}
 
 {#if modal}
   <!-- svelte-ignore a11y-click-events-have-key-events -->
@@ -571,6 +700,51 @@
         <button class="close-btn" on:click={() => modal = null}>Close</button>
       </div>
 
+    <!-- ── CHANGELOG ── -->
+    {:else if modal === 'changelog'}
+      <div class="mbox">
+        <div class="mbox-hdr">
+          <span class="mbox-title">CHANGELOG</span>
+          <button class="mclose" on:click={() => modal = null}>✕</button>
+        </div>
+        <div class="changelog-list">
+          <div class="cl-version">
+            <div class="cl-ver-header">
+              <span class="cl-ver-tag">v3.0.1</span>
+              <span class="cl-ver-date">Current</span>
+            </div>
+            <div class="cl-item cl-fix">Fixed accurate CPU readings with persistent sysinfo instance</div>
+            <div class="cl-item cl-fix">Fixed transparent window background on launch</div>
+            <div class="cl-item cl-fix">Fixed font rendering in chart overlays</div>
+            <div class="cl-item cl-add">Added Dark / Light theme toggle</div>
+            <div class="cl-item cl-add">Added Always on Top toggle in Settings</div>
+            <div class="cl-item cl-add">Added Performance modes: Eco / Normal / Turbo</div>
+            <div class="cl-item cl-add">Added animated performance badge in header</div>
+            <div class="cl-item cl-add">Added System Info panel (CPU, RAM, OS, hostname)</div>
+            <div class="cl-item cl-add">Added Quick Notes with local storage</div>
+            <div class="cl-item cl-add">Added Changelog modal</div>
+            <div class="cl-item cl-add">Added window controls (minimize, maximize, close)</div>
+            <div class="cl-item cl-imp">Spotify panel: real session history tracking</div>
+            <div class="cl-item cl-imp">Spotify panel: music service selector (Apple Music coming soon)</div>
+            <div class="cl-item cl-rem">Removed Top Processes (inaccurate, replaced with System Info)</div>
+          </div>
+          <div class="cl-version">
+            <div class="cl-ver-header">
+              <span class="cl-ver-tag">v3.0.0</span>
+              <span class="cl-ver-date">Initial release</span>
+            </div>
+            <div class="cl-item cl-add">Full rewrite from Python/PyQt6 to Tauri + Svelte + Rust</div>
+            <div class="cl-item cl-add">White theme with big number metric cards</div>
+            <div class="cl-item cl-add">Clickable cards with 60s history charts</div>
+            <div class="cl-item cl-add">CPU, RAM, GPU, Disk, Network monitoring</div>
+            <div class="cl-item cl-add">Spotify integration with animated visualizer</div>
+            <div class="cl-item cl-add">System tray support</div>
+            <div class="cl-item cl-add">GitHub Actions CI/CD for Windows builds</div>
+          </div>
+        </div>
+        <button class="close-btn" on:click={() => modal = null}>Close</button>
+      </div>
+
     <!-- ── STATS ── -->
     {:else if modal === 'stats'}
       <div class="mbox">
@@ -588,6 +762,9 @@
         </div>
         <button class="close-btn" on:click={() => modal = null}>Close</button>
       </div>
+
+    <!-- ── NOTES ── -->
+    {:else if modal === 'notes-modal'}
 
     <!-- ── ACTIONS ── -->
     {:else if modal === 'actions'}
@@ -860,4 +1037,72 @@
   /* Perf toggle buttons slightly wider */
   .perf-toggle { min-width: 60px; }
 
+
+  /* ── System Info ── */
+  .sysinfo-card { padding: 14px; }
+  .sysinfo-row  { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(0,0,0,.04); }
+  .sysinfo-row:last-child { border-bottom: none; }
+  .sysinfo-key  { font-size: 9px; font-weight: 700; letter-spacing: .1em; color: #aaa; flex-shrink: 0; }
+  .sysinfo-val  { font-size: 10px; font-weight: 600; color: #333; text-align: right; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 110px; }
+  .shell.dark .sysinfo-row  { border-color: rgba(255,255,255,.05); }
+  .shell.dark .sysinfo-val  { color: #ccc; }
+
+  /* ── Notes card ── */
+  .notes-card   { text-align: left; padding: 14px; display: flex; flex-direction: column; gap: 6px; }
+  .notes-header { display: flex; align-items: center; justify-content: space-between; }
+  .notes-count  { background: #f0f0f0; color: #888; font-size: 9px; font-weight: 700; padding: 2px 6px; border-radius: 99px; }
+  .notes-empty  { font-size: 11px; color: #ccc; flex: 1; display: flex; align-items: center; }
+  .notes-preview { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+  .note-preview-item { display: flex; align-items: center; gap: 6px; }
+  .note-preview-dot  { width: 4px; height: 4px; border-radius: 50%; background: #3b82f6; flex-shrink: 0; }
+  .note-preview-text { font-size: 10px; color: #555; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .notes-more   { font-size: 9px; color: #bbb; padding-left: 10px; }
+  .notes-add-hint { font-size: 9px; color: #ccc; margin-top: auto; }
+  .shell.dark .notes-count      { background: rgba(255,255,255,.1); color: #666; }
+  .shell.dark .note-preview-text { color: #999; }
+
+  /* ── Notes modal ── */
+  .notes-mbox   { width: 360px; max-height: 80vh; display: flex; flex-direction: column; }
+  .note-input-wrap { display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; }
+  .note-textarea {
+    width: 100%; padding: 10px 12px; border: 1px solid rgba(0,0,0,.1);
+    border-radius: 10px; font-size: 12px; font-family: inherit; resize: none;
+    background: #f9f9f9; color: #1a1a1a; outline: none; transition: border .15s;
+  }
+  .note-textarea:focus { border-color: #3b82f6; background: #fff; }
+  .note-input-actions { display: flex; gap: 6px; justify-content: flex-end; }
+  .note-hint    { font-size: 10px; color: #ccc; text-align: right; }
+  .note-save-btn  { background: #1a1a1a; color: #fff; border: none; border-radius: 8px; padding: 7px 14px; font-size: 11px; font-weight: 700; cursor: pointer; transition: .12s; }
+  .note-save-btn:hover { background: #333; }
+  .note-cancel-btn { background: #f5f5f5; color: #888; border: none; border-radius: 8px; padding: 7px 14px; font-size: 11px; font-weight: 600; cursor: pointer; }
+  .notes-list   { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; max-height: 340px; }
+  .notes-list-empty { font-size: 12px; color: #ccc; text-align: center; padding: 24px; }
+  .note-item    { background: #f9f9f9; border: 1px solid rgba(0,0,0,.06); border-radius: 10px; padding: 10px 12px; transition: .12s; }
+  .note-item:hover { background: #f3f3f3; }
+  .note-editing { border-color: #3b82f6; background: #eff6ff; }
+  .note-item-text   { font-size: 12px; color: #1a1a1a; white-space: pre-wrap; word-break: break-word; margin-bottom: 6px; }
+  .note-item-footer { display: flex; justify-content: space-between; align-items: center; }
+  .note-item-ts     { font-size: 9px; color: #bbb; }
+  .note-item-actions { display: flex; gap: 6px; }
+  .note-edit-btn, .note-del-btn { font-size: 10px; font-weight: 600; border: none; border-radius: 6px; padding: 3px 8px; cursor: pointer; transition: .12s; }
+  .note-edit-btn { background: #eff6ff; color: #3b82f6; }
+  .note-edit-btn:hover { background: #dbeafe; }
+  .note-del-btn  { background: #fef2f2; color: #ef4444; }
+  .note-del-btn:hover { background: #fee2e2; }
+
+  /* ── Changelog ── */
+  .changelog-list { display: flex; flex-direction: column; gap: 16px; max-height: 420px; overflow-y: auto; margin-bottom: 12px; }
+  .cl-version { display: flex; flex-direction: column; gap: 5px; }
+  .cl-ver-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; padding-bottom: 6px; border-bottom: 1px solid rgba(0,0,0,.06); }
+  .cl-ver-tag  { font-size: 13px; font-weight: 800; color: #1a1a1a; }
+  .cl-ver-date { font-size: 10px; color: #aaa; }
+  .cl-item     { font-size: 11px; padding: 3px 0 3px 16px; position: relative; color: #555; }
+  .cl-item::before { content: ''; position: absolute; left: 5px; top: 8px; width: 5px; height: 5px; border-radius: 50%; }
+  .cl-add::before  { background: #10b981; }
+  .cl-fix::before  { background: #3b82f6; }
+  .cl-imp::before  { background: #f59e0b; }
+  .cl-rem::before  { background: #ef4444; }
+  .shell.dark ~ .overlay .cl-ver-tag  { color: #e8e8ea; }
+  .shell.dark ~ .overlay .cl-ver-header { border-color: rgba(255,255,255,.08); }
+  .shell.dark ~ .overlay .cl-item    { color: #888; }
 </style>

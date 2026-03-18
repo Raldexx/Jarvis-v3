@@ -39,6 +39,7 @@ pub fn run() {
             commands::get_processes,
             commands::get_weather,
             commands::get_spotify,
+            commands::get_system_info,
             commands::system_action,
         ])
         .run(tauri::generate_context!())
