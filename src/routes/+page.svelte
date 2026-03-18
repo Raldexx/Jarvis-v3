@@ -15,6 +15,13 @@
   let modal = null; // null | 'spotify' | 'settings' | 'stats' | 'actions'
   let darkTheme = false;
   let alwaysOnTop = true;
+  let perfMode = 'normal'; // 'eco' | 'normal' | 'turbo'
+
+  const PERF = {
+    eco:    { icon: '🌿', label: 'ECO',    interval: 5000, slowInterval: 30000, net: false, spotify: false, procs: false, weather: false },
+    normal: { icon: '⚡', label: 'NORMAL', interval: 1000, slowInterval: 2000,  net: true,  spotify: true,  procs: true,  weather: true  },
+    turbo:  { icon: '🚀', label: 'TURBO',  interval: 500,  slowInterval: 1000,  net: true,  spotify: true,  procs: true,  weather: true  },
+  };
 
   // Chart overlay
   let chartKey = null, chartTitle = '', chartColor = '';
@@ -71,7 +78,8 @@
     ramHist = [...ramHist.slice(1), ram];
     gpuHist = [...gpuHist.slice(1), gpu];
 
-    const n = await inv('get_network_stats');
+    const _mode = PERF[perfMode];
+    const n = _mode.net ? await inv('get_network_stats') : null;
     if (n) {
       dlSpeed = Math.max(0, n.download_bytes - prevRecv) / 1024;
       ulSpeed = Math.max(0, n.upload_bytes   - prevSent) / 1024;
@@ -86,13 +94,14 @@
   }
 
   async function slowTick() {
+    const _m = PERF[perfMode];
     const now = Date.now();
-    if (now - weatherTs > 300_000) {
+    if (_m.weather && now - weatherTs > 300_000) {
       const w = await inv('get_weather');
       weatherText = w || '☀ 22°C';
       weatherTs = now;
     }
-    const p = await inv('get_processes');
+    const p = _m.procs ? await inv('get_processes') : null;
     if (p) processList = p;
     else processList = [
       { name: 'chrome.exe',  cpu_percent: 18 + Math.random() * 5 },
@@ -100,7 +109,7 @@
       { name: 'discord.exe', cpu_percent: 3  + Math.random() * 2 },
       { name: 'spotify.exe', cpu_percent: 1  + Math.random() },
     ];
-    const sp = await inv('get_spotify');
+    const sp = _m.spotify ? await inv('get_spotify') : null;
     if (sp) {
       if (sp.playing && sp.track && sp.track !== spotifyTrack) {
         // new track started — push old one to history
@@ -114,11 +123,20 @@
     }
   }
 
-  onMount(() => {
+  function startPolling() {
+    clearInterval(fastId); clearInterval(slowId);
+    const m = PERF[perfMode];
     fastTick(); slowTick();
-    fastId = setInterval(fastTick, 1000);
-    slowId = setInterval(slowTick, 2000);
-  });
+    fastId = setInterval(fastTick, m.interval);
+    slowId = setInterval(slowTick, m.slowInterval);
+  }
+
+  function setPerfMode(mode) {
+    perfMode = mode;
+    startPolling();
+  }
+
+  onMount(() => { startPolling(); });
   onDestroy(() => { clearInterval(fastId); clearInterval(slowId); });
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -219,7 +237,15 @@
   <div class="hdr">
     <div>
       <div class="hdr-sub">SYSTEM MONITOR</div>
-      <div class="hdr-title">JARVIS <span class="hdr-ver">v3.0</span></div>
+      <div class="hdr-title-row">
+        <div class="hdr-title">JARVIS <span class="hdr-ver">v3.0</span></div>
+        {#key perfMode}
+          <div class="perf-badge perf-{perfMode}">
+            <span class="perf-icon">{PERF[perfMode].icon}</span>
+            <span class="perf-label">{PERF[perfMode].label}</span>
+          </div>
+        {/key}
+      </div>
     </div>
     <div class="hdr-right">
       <div class="hdr-clock">{clockStr}</div>
@@ -518,6 +544,23 @@
           </div>
         </div>
         <div class="settings-row">
+          <span class="settings-label">Performance mode</span>
+          <div class="toggle-wrap no-drag" style="gap:6px">
+            <button class="toggle-btn perf-toggle {perfMode==='eco'?'toggle-active':''}" on:click={()=>setPerfMode('eco')}>🌿 Eco</button>
+            <button class="toggle-btn perf-toggle {perfMode==='normal'?'toggle-active':''}" on:click={()=>setPerfMode('normal')}>⚡ Normal</button>
+            <button class="toggle-btn perf-toggle {perfMode==='turbo'?'toggle-active':''}" on:click={()=>setPerfMode('turbo')}>🚀 Turbo</button>
+          </div>
+        </div>
+        <div class="perf-info-box">
+          {#if perfMode === 'eco'}
+            CPU & RAM only · 5s refresh · minimal system load
+          {:else if perfMode === 'normal'}
+            All metrics · 1s refresh · balanced
+          {:else}
+            All metrics · 500ms refresh · maximum accuracy
+          {/if}
+        </div>
+        <div class="settings-row">
           <span class="settings-label">CPU alert threshold</span>
           <span class="settings-val">90%</span>
         </div>
@@ -776,4 +819,45 @@
   .shell.dark ~ .overlay .sp-svc-item { background: rgba(255,255,255,.06); }
   .shell.dark ~ .overlay .mbox { background: #1c1c1e; }
   .shell.dark ~ .overlay .chart-axis span { color: #555; }
+
+  /* ── Header title row ── */
+  .hdr-title-row { display: flex; align-items: center; gap: 8px; }
+
+  /* ── Perf badge ── */
+  .perf-badge {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 99px;
+    font-size: 10px; font-weight: 700; letter-spacing: .08em;
+    animation: badgeSlide .3s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  @keyframes badgeSlide {
+    from { opacity: 0; transform: translateX(-12px) scale(.85); }
+    to   { opacity: 1; transform: translateX(0) scale(1); }
+  }
+  .perf-eco    { background: #f0fdf4; color: #16a34a; }
+  .perf-normal { background: #fffbeb; color: #d97706; }
+  .perf-turbo  { background: #fef2f2; color: #dc2626; animation: badgeSlide .3s cubic-bezier(.34,1.56,.64,1) both, turboPulse 1.5s ease-in-out infinite; }
+  .perf-icon   { font-size: 12px; }
+  .perf-label  { font-size: 9px; }
+
+  @keyframes turboPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(220,38,38,.0); }
+    50%      { box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+  }
+
+  .shell.dark .perf-eco    { background: rgba(22,163,74,.15);  color: #4ade80; }
+  .shell.dark .perf-normal { background: rgba(217,119,6,.15);  color: #fbbf24; }
+  .shell.dark .perf-turbo  { background: rgba(220,38,38,.15);  color: #f87171; }
+
+  /* ── Perf info box in settings ── */
+  .perf-info-box {
+    font-size: 10px; color: #999; background: #f9f9f9;
+    border-radius: 8px; padding: 7px 12px; margin-top: -6px;
+    border: 1px solid rgba(0,0,0,.05);
+  }
+  .shell.dark ~ .overlay .perf-info-box { background: rgba(255,255,255,.05); color: #666; border-color: rgba(255,255,255,.08); }
+
+  /* Perf toggle buttons slightly wider */
+  .perf-toggle { min-width: 60px; }
+
 </style>
