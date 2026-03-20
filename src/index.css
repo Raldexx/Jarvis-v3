@@ -1,0 +1,28 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 245 245 247;
+    --card: 255 255 255;
+    --border: 0 0 0 / 0.07;
+    --text-primary: 26 26 26;
+    --text-muted: 170 170 170;
+  }
+  .dark {
+    --background: 17 17 19;
+    --card: 28 28 30;
+    --border: 255 255 255 / 0.08;
+    --text-primary: 232 232 234;
+    --text-muted: 100 100 100;
+  }
+}
+
+* { -webkit-user-select: none; user-select: none; }
+input, textarea { -webkit-user-select: text; user-select: text; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 99px; }
+.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,.12); }
