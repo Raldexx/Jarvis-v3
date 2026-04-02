@@ -443,7 +443,7 @@ function NotesModal({ open, onClose, t, notes, addNote, removeNote, updateNote }
 // ── Main App ───────────────────────────────────────────────────────────────────
 export default function App() {
   const { sys, net, spotify, procs, weather, sysInfo, isDemo, cpuHist, ramHist, gpuHist, netHist, settings, updateSettings } = useSystemData();
-  const t = TRANSLATIONS[settings.language];
+  const t = TRANSLATIONS[settings.language] as typeof TRANSLATIONS['en'];
   const clock = useClock(settings.language);
   const { notes, add: addNote, remove: removeNote, update: updateNote } = useNotes();
 
