@@ -2,12 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal } from '@/components/ui/Modal';
 import type { SpotifyInfo, I18n } from '@/store/system';
 
+interface TC { cardBg:string; cardBorder:string; textPrimary:string; textMuted:string; accent:string; sparkline:string; nowPlayingColor:string; }
 interface SpotifyPanelProps {
   open:    boolean;
   onClose: () => void;
   spotify: SpotifyInfo;
   t:       I18n;
   isEco:   boolean;
+  tc?:     TC | null;
 }
 
 const SPOTIFY_ICON = (
@@ -16,7 +18,7 @@ const SPOTIFY_ICON = (
   </svg>
 );
 
-export function SpotifyPanel({ open, onClose, spotify, t, isEco }: SpotifyPanelProps) {
+export function SpotifyPanel({ open, onClose, spotify, t, isEco, tc }: SpotifyPanelProps) {
   const [recentTracks, setRecentTracks] = useState<{n:string;a:string;ts:string}[]>([]);
   const prevTrack = useRef('');
 
@@ -44,7 +46,7 @@ export function SpotifyPanel({ open, onClose, spotify, t, isEco }: SpotifyPanelP
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={t.music} wide
+    <Modal open={open} onClose={onClose} title={t.music} wide tc={tc}
       actions={
         <button
           onClick={openStatsWindow}
@@ -72,8 +74,8 @@ export function SpotifyPanel({ open, onClose, spotify, t, isEco }: SpotifyPanelP
               <div className="flex items-center gap-2.5 mb-3">
                 <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-spotify to-[#158a3e] flex items-center justify-center text-lg flex-shrink-0">♫</div>
                 <div className="min-w-0">
-                  <div className="text-[14px] font-bold text-[#1a1a1a] dark:text-[#e8e8ea] truncate">{spotify.track || t.notPlaying}</div>
-                  <div className="text-[11px] text-black/40 dark:text-white/40">{spotify.artist || (spotify.playing ? '—' : t.openSpotify)}</div>
+                  <div className="text-[14px] font-bold truncate" style={tc?{color:tc.textPrimary}:{}}>{spotify.track || t.notPlaying}</div>
+                  <div className="text-[11px]" style={tc?{color:tc.textMuted}:{color:undefined}}>{spotify.artist || (spotify.playing ? '—' : t.openSpotify)}</div>
                 </div>
               </div>
               {spotify.playing ? (

@@ -131,17 +131,45 @@ pub fn get_network_stats() -> NetworkStats {
 
 #[tauri::command]
 pub fn get_processes() -> Vec<ProcessInfo> {
+    // System/host processes to exclude
+    let exclude: &[&str] = &[
+        "msedgewebview2.exe", "RuntimeBroker.exe", "svchost.exe",
+        "SearchHost.exe", "SearchIndexer.exe", "WmiPrvSE.exe",
+        "audiodg.exe", "dwm.exe", "csrss.exe", "lsass.exe",
+        "services.exe", "smss.exe", "wininit.exe", "winlogon.exe",
+        "System", "Registry", "Idle", "conhost.exe", "fontdrvhost.exe",
+        "MsMpEng.exe", "NisSrv.exe", "SecurityHealthService.exe",
+        "spoolsv.exe", "msdtc.exe", "dllhost.exe", "taskhostw.exe",
+        "ctfmon.exe", "sihost.exe", "ShellExperienceHost.exe",
+        "StartMenuExperienceHost.exe", "TextInputHost.exe",
+    ];
+
     with_sys(|sys| {
         sys.refresh_processes(ProcessesToUpdate::All, true);
         let ram_total = sys.total_memory() as f32;
-        let mut procs: Vec<ProcessInfo> = sys.processes().values().map(|p| ProcessInfo {
-            name:        p.name().to_string_lossy().into_owned(),
-            cpu_percent: p.cpu_usage(),
-            mem_percent: if ram_total > 0.0 { p.memory() as f32 / ram_total * 100.0 } else { 0.0 },
-            pid:         p.pid().as_u32(),
-        }).collect();
+        let mut procs: Vec<ProcessInfo> = sys.processes().values()
+            .filter(|p| {
+                let name = p.name().to_string_lossy().to_lowercase();
+                // Must use >0.1% CPU or >0.5% memory
+                let cpu = p.cpu_usage();
+                let mem = if ram_total > 0.0 { p.memory() as f32 / ram_total * 100.0 } else { 0.0 };
+                if cpu < 0.05 && mem < 0.3 { return false; }
+                // Exclude system processes
+                let name_orig = p.name().to_string_lossy();
+                if exclude.iter().any(|e| name_orig.eq_ignore_ascii_case(e)) { return false; }
+                // Exclude Windows host process patterns
+                if name.starts_with("runtime") && name.contains("broker") { return false; }
+                if name == "system" || name == "registry" || name == "idle" { return false; }
+                true
+            })
+            .map(|p| ProcessInfo {
+                name:        p.name().to_string_lossy().into_owned(),
+                cpu_percent: p.cpu_usage(),
+                mem_percent: if ram_total > 0.0 { p.memory() as f32 / ram_total * 100.0 } else { 0.0 },
+                pid:         p.pid().as_u32(),
+            }).collect();
         procs.sort_by(|a, b| b.cpu_percent.partial_cmp(&a.cpu_percent).unwrap());
-        procs.truncate(5);
+        procs.truncate(6);
         procs
     })
 }

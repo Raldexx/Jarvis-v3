@@ -2,19 +2,19 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, BarChart2, Zap, Minus, Maximize2, X, Crown, Image, Clock } from 'lucide-react';
 import { useSystemData, PERF_CONFIG, TRANSLATIONS, type PerfMode, type Language, type I18n } from '@/store/system';
-import { Card, SectionLabel } from '@/components/ui/Card';
 import { Modal } from '@/components/ui/Modal';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartModal } from '@/components/ChartModal';
 import { SpotifyPanel } from '@/components/SpotifyPanel';
 import { fmtSpeed, fmtTemp, fmtUptime, cn } from '@/lib/utils';
+import { ICARDI_IMG } from '@/assets/icardi';
+import { MADISON_IMG } from '@/assets/madison';
 
 type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'premium' | 'worldclock' | 'imagetools' | null;
 type ChartKey = 'cpu' | 'ram' | 'gpu' | 'net' | 'disk';
-
-// ── Special artist themes ─────────────────────────────────────────────────────
 type ArtistTheme = 'madison' | 'icardi' | null;
 
+// ── Artist theme detection ────────────────────────────────────────────────────
 function getArtistTheme(artist: string, track: string): ArtistTheme {
   const a = artist.toLowerCase();
   const t = track.toLowerCase();
@@ -23,180 +23,126 @@ function getArtistTheme(artist: string, track: string): ArtistTheme {
   return null;
 }
 
-const THEME_CFG = {
+// ── Theme config ──────────────────────────────────────────────────────────────
+interface ThemeConfig {
+  bg: string;
+  accent: string;
+  accentSoft: string;
+  cardBg: string;
+  cardBorder: string;
+  textPrimary: string;
+  textMuted: string;
+  sparkline: string;
+  nowPlayingColor: string;
+  banner: string;
+  bannerBg: string;
+  bannerBorder: string;
+  bannerText: string;
+  photo: string;
+}
+
+const THEME_CFG: Record<NonNullable<ArtistTheme>, ThemeConfig> = {
   madison: {
-    bg:           'linear-gradient(160deg,#0d0018 0%,#1a0030 40%,#2d0a1a 100%)',
-    accent:       '#e879f9',
-    cardBg:       'rgba(45,10,60,0.82)',
-    cardBorder:   'rgba(232,121,249,0.20)',
-    textPrimary:  '#f5d0fe',
-    textMuted:    'rgba(245,208,254,0.45)',
-    sparkline:    '#e879f9',
-    nowPlayingColor: '#e879f9',
-    banner: '💜 Madison Beer mode',
-    bannerBg: 'rgba(168,85,247,0.15)',
-    bannerBorder: 'rgba(168,85,247,0.3)',
-    bannerText: '#d8b4fe',
+    bg:             'linear-gradient(160deg,#0d0018 0%,#1a0030 45%,#2d0a1a 100%)',
+    accent:         '#e879f9',
+    accentSoft:     '#a21caf',
+    cardBg:         'rgba(45,10,60,0.78)',
+    cardBorder:     'rgba(232,121,249,0.18)',
+    textPrimary:    '#f5d0fe',
+    textMuted:      'rgba(245,208,254,0.50)',
+    sparkline:      '#e879f9',
+    nowPlayingColor:'#e879f9',
+    banner:         '💜 Madison Beer mode',
+    bannerBg:       'rgba(168,85,247,0.15)',
+    bannerBorder:   'rgba(168,85,247,0.30)',
+    bannerText:     '#d8b4fe',
+    photo:          MADISON_IMG,
   },
   icardi: {
-    bg:           'linear-gradient(160deg,#0a0000 0%,#1f0400 35%,#2e0c00 65%,#1a0900 100%)',
-    accent:       '#fbbf24',
-    cardBg:       'rgba(38,8,0,0.85)',
-    cardBorder:   'rgba(251,191,36,0.22)',
-    textPrimary:  '#fef3c7',
-    textMuted:    'rgba(254,243,199,0.45)',
-    sparkline:    '#f59e0b',
-    nowPlayingColor: '#fbbf24',
-    banner: '⚽ Galatasaray — İcardi #9',
-    bannerBg: 'rgba(220,38,38,0.18)',
-    bannerBorder: 'rgba(251,191,36,0.38)',
-    bannerText: '#fbbf24',
+    bg:             'linear-gradient(160deg,#0a0000 0%,#1f0400 38%,#2e0c00 70%,#1a0900 100%)',
+    accent:         '#fbbf24',
+    accentSoft:     '#dc2626',
+    cardBg:         'rgba(38,8,0,0.82)',
+    cardBorder:     'rgba(251,191,36,0.22)',
+    textPrimary:    '#fef3c7',
+    textMuted:      'rgba(254,243,199,0.50)',
+    sparkline:      '#f59e0b',
+    nowPlayingColor:'#fbbf24',
+    banner:         '⚽ Galatasaray — İcardi #99',
+    bannerBg:       'rgba(220,38,38,0.18)',
+    bannerBorder:   'rgba(251,191,36,0.38)',
+    bannerText:     '#fbbf24',
+    photo:          ICARDI_IMG,
   },
-} as const;
+};
 
-// ── Artist CSS background art ─────────────────────────────────────────────────
+// ── Artist Background with real photo ────────────────────────────────────────
 function ArtistBackground({ theme }: { theme: NonNullable<ArtistTheme> }) {
-  if (theme === 'madison') {
-    return (
-      <div style={{ position:'fixed', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:0 }}>
-        {/* Purple glow */}
-        <div style={{ position:'absolute', right:'-60px', bottom:'60px', width:'300px', height:'420px',
-          background:'radial-gradient(ellipse at 70% 60%, rgba(232,121,249,0.22) 0%, transparent 68%)' }} />
-        <div style={{ position:'absolute', right:'-10px', top:'60px', width:'180px', height:'280px',
-          background:'radial-gradient(ellipse at 60% 40%, rgba(139,92,246,0.14) 0%, transparent 70%)' }} />
-        {/* Stars */}
-        {[...'★☆✦✧✩✪✫✬✭✮✯'].map((s,i) => (
-          <div key={i} style={{ position:'absolute', left:`${(i*73+7)%92}%`, top:`${(i*47+5)%88}%`,
-            fontSize:`${i%3===0?10:6}px`, color:`rgba(245,208,254,${0.12+i%4*0.05})`,
-            animation:`twinkle ${2+i%3}s ease-in-out infinite`, animationDelay:`${i*0.3}s` }}>{s}</div>
-        ))}
-        {/* Floating notes */}
-        {['♪','♫','♩','♬'].map((n,i) => (
-          <div key={i} style={{ position:'absolute', right:`${25+i*28}px`, top:`${100+i*60}px`,
-            fontSize:`${16+i*4}px`, color:'rgba(232,121,249,0.20)',
-            animation:`drift ${4+i}s ease-in-out infinite`, animationDelay:`${i*0.7}s` }}>{n}</div>
-        ))}
-        {/* Singer silhouette */}
-        <svg viewBox="0 0 110 290" style={{ position:'absolute', right:0, bottom:0, width:'110px', height:'290px', opacity:0.09 }}>
-          <ellipse cx="55" cy="30" rx="20" ry="23" fill="#e879f9"/>
-          {/* hair */}
-          <path d="M35 22 Q12 75 28 150 Q32 170 30 195" stroke="#e879f9" strokeWidth="9" fill="none" strokeLinecap="round"/>
-          <path d="M75 22 Q98 75 82 150 Q78 170 80 200" stroke="#e879f9" strokeWidth="7" fill="none" strokeLinecap="round"/>
-          {/* body */}
-          <path d="M38 53 Q26 95 28 145 Q30 175 25 218" stroke="#e879f9" strokeWidth="7" fill="none" strokeLinecap="round"/>
-          <path d="M72 53 Q84 95 82 145 Q80 175 85 218" stroke="#e879f9" strokeWidth="7" fill="none" strokeLinecap="round"/>
-          <path d="M28 145 Q55 158 82 145" stroke="#e879f9" strokeWidth="5" fill="none"/>
-          {/* legs */}
-          <line x1="38" y1="218" x2="30" y2="288" stroke="#e879f9" strokeWidth="6" strokeLinecap="round"/>
-          <line x1="72" y1="218" x2="80" y2="288" stroke="#e879f9" strokeWidth="6" strokeLinecap="round"/>
-          {/* mic */}
-          <path d="M80 90 Q102 78 108 66" stroke="#e879f9" strokeWidth="4" fill="none" strokeLinecap="round"/>
-          <ellipse cx="109" cy="62" rx="5" ry="9" fill="#e879f9" opacity="0.7"/>
-        </svg>
-        {/* MADISON BEER big watermark */}
-        <div style={{ position:'absolute', bottom:'8px', right:'8px',
-          fontSize:'8px', fontWeight:'900', letterSpacing:'0.15em',
-          color:'rgba(232,121,249,0.12)', textTransform:'uppercase' }}>MADISON BEER</div>
-      </div>
-    );
-  }
-
-  // Icardi / Galatasaray
+  const cfg = THEME_CFG[theme];
   return (
     <div style={{ position:'fixed', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:0 }}>
-      {/* Fire glow */}
-      <div style={{ position:'absolute', right:'-50px', bottom:'30px', width:'280px', height:'400px',
-        background:'radial-gradient(ellipse at 65% 75%, rgba(220,38,38,0.28) 0%, rgba(251,191,36,0.10) 50%, transparent 75%)' }} />
-      <div style={{ position:'absolute', left:'-30px', top:'100px', width:'160px', height:'220px',
-        background:'radial-gradient(ellipse at 35% 55%, rgba(251,191,36,0.12) 0%, transparent 70%)' }} />
-
-      {/* Galatasaray shield badge */}
-      <svg viewBox="0 0 100 110" style={{ position:'absolute', right:'10px', top:'10px', width:'52px', height:'58px', opacity:0.14 }}>
-        <path d="M50 4 L92 18 L92 58 Q92 85 50 104 Q8 85 8 58 L8 18 Z" fill="#dc2626"/>
-        <path d="M50 4 L92 18 L92 58 Q92 85 50 104 Q8 85 8 58 L8 18 Z" stroke="#fbbf24" strokeWidth="3.5" fill="none"/>
-        {/* Diagonal split */}
-        <line x1="8" y1="18" x2="92" y2="58" stroke="#fbbf24" strokeWidth="2" opacity="0.5"/>
-        <text x="50" y="70" textAnchor="middle" fontSize="36" fontWeight="900" fill="#fbbf24" fontFamily="serif">G</text>
-      </svg>
-
-      {/* Big number 9 watermark */}
-      <div style={{ position:'absolute', right:'-8px', bottom:'40px',
-        fontSize:'200px', fontWeight:'900', fontStyle:'italic',
-        color:'rgba(251,191,36,0.055)', lineHeight:1,
-        fontFamily:'Georgia,serif', userSelect:'none' }}>9</div>
-
-      {/* Football */}
-      <svg viewBox="0 0 60 60" style={{ position:'absolute', left:'10px', bottom:'100px', width:'44px', height:'44px', opacity:0.10 }}>
-        <circle cx="30" cy="30" r="27" stroke="#fbbf24" strokeWidth="2.5" fill="none"/>
-        <path d="M30 4 L22 16 L38 16 Z" fill="#dc2626"/>
-        <path d="M56 30 L44 22 L44 38 Z" fill="#dc2626"/>
-        <path d="M4 30 L16 22 L16 38 Z" fill="#dc2626"/>
-        <path d="M22 54 L30 44 L38 54 Z" fill="#dc2626"/>
-        <path d="M22 16 L16 24 L22 32 L30 34 L38 32 L44 24 L38 16 Z" fill="rgba(220,38,38,0.5)"/>
-      </svg>
-
-      {/* Fire sparks */}
-      {Array(10).fill(0).map((_,i) => (
-        <div key={i} style={{ position:'absolute',
-          right:`${12+(i*21)%75}px`, bottom:`${30+(i*41)%220}px`,
-          width:`${2+i%3}px`, height:`${2+i%3}px`, borderRadius:'50%',
-          background:i%2===0?'rgba(251,191,36,0.35)':'rgba(220,38,38,0.35)',
-          animation:`spark ${1.5+i*0.3}s ease-in-out infinite`, animationDelay:`${i*0.2}s` }} />
-      ))}
-
-      {/* Striker silhouette — arms raised celebration */}
-      <svg viewBox="0 0 105 270" style={{ position:'absolute', right:0, bottom:0, width:'105px', height:'270px', opacity:0.10 }}>
-        {/* Head */}
-        <ellipse cx="52" cy="26" rx="17" ry="19" fill="#fbbf24"/>
-        {/* Body/jersey */}
-        <path d="M35 45 L28 92 L30 148 L74 148 L76 92 L69 45 Z" fill="#dc2626"/>
-        {/* Arms UP celebrating */}
-        <path d="M35 58 Q12 40 6 22" stroke="#fbbf24" strokeWidth="8" fill="none" strokeLinecap="round"/>
-        <path d="M69 58 Q92 40 98 22" stroke="#fbbf24" strokeWidth="8" fill="none" strokeLinecap="round"/>
-        {/* Fists */}
-        <circle cx="5" cy="20" r="7" fill="#fbbf24"/>
-        <circle cx="99" cy="20" r="7" fill="#fbbf24"/>
-        {/* Shorts */}
-        <path d="M30 148 L24 196 L50 196 L52 165 L54 196 L80 196 L74 148 Z" fill="#fbbf24"/>
-        {/* Legs */}
-        <rect x="25" y="196" width="20" height="58" rx="5" fill="#dc2626"/>
-        <rect x="59" y="196" width="20" height="58" rx="5" fill="#dc2626"/>
-        {/* Boots */}
-        <ellipse cx="35" cy="256" rx="16" ry="9" fill="#0a0000"/>
-        <ellipse cx="69" cy="256" rx="16" ry="9" fill="#0a0000"/>
-        {/* Jersey number */}
-        <text x="52" y="118" textAnchor="middle" fontSize="26" fontWeight="900" fill="rgba(251,191,36,0.55)" fontFamily="Arial Narrow,sans-serif">9</text>
-        {/* Jersey stripes hint */}
-        <line x1="35" y1="48" x2="35" y2="148" stroke="rgba(251,191,36,0.15)" strokeWidth="2"/>
-        <line x1="69" y1="48" x2="69" y2="148" stroke="rgba(251,191,36,0.15)" strokeWidth="2"/>
-      </svg>
-
-      {/* GALATASARAY watermark */}
-      <div style={{ position:'absolute', bottom:'8px', left:'8px',
-        fontSize:'7px', fontWeight:'900', letterSpacing:'0.12em',
-        color:'rgba(251,191,36,0.10)', textTransform:'uppercase' }}>GALATASARAY</div>
+      {/* Real photo — bottom-right, faded */}
+      <div style={{
+        position:'absolute', right:0, bottom:0,
+        width:'65%', height:'100%',
+        backgroundImage:`url(${cfg.photo})`,
+        backgroundSize:'cover',
+        backgroundPosition: theme === 'icardi' ? 'center top' : 'center center',
+        maskImage:'linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 90%), linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%)',
+        WebkitMaskImage:'linear-gradient(to left, rgba(0,0,0,0.35) 0%, transparent 90%), linear-gradient(to top, rgba(0,0,0,0.4) 0%, transparent 60%)',
+        filter:'saturate(1.1)',
+        opacity: 0.45,
+      }} />
+      {/* Colour glow overlay */}
+      <div style={{
+        position:'absolute', inset:0,
+        background: theme === 'icardi'
+          ? 'radial-gradient(ellipse at 80% 80%, rgba(220,38,38,0.20) 0%, transparent 60%)'
+          : 'radial-gradient(ellipse at 75% 65%, rgba(232,121,249,0.18) 0%, transparent 65%)',
+        pointerEvents:'none',
+      }} />
+      {/* Theme-specific decorations */}
+      {theme === 'madison' && <>
+        {['♪','♫','♩','♬'].map((n,i) => (
+          <div key={i} style={{ position:'absolute', right:`${28+i*25}px`, top:`${90+i*65}px`,
+            fontSize:`${15+i*3}px`, color:'rgba(232,121,249,0.22)',
+            animation:`drift ${4+i}s ease-in-out infinite`, animationDelay:`${i*0.7}s` }}>{n}</div>
+        ))}
+      </>}
+      {theme === 'icardi' && <>
+        {/* #99 big watermark */}
+        <div style={{ position:'absolute', right:'-5px', bottom:'30px',
+          fontSize:'160px', fontWeight:'900', fontStyle:'italic',
+          color:'rgba(251,191,36,0.06)', lineHeight:1, fontFamily:'Georgia,serif', userSelect:'none' }}>99</div>
+        {/* Galatasaray crest */}
+        <svg viewBox="0 0 100 110" style={{ position:'absolute', right:'12px', top:'12px', width:'44px', height:'50px', opacity:0.13 }}>
+          <path d="M50 4 L92 18 L92 58 Q92 85 50 104 Q8 85 8 58 L8 18 Z" fill="#dc2626"/>
+          <path d="M50 4 L92 18 L92 58 Q92 85 50 104 Q8 85 8 58 L8 18 Z" stroke="#fbbf24" strokeWidth="3.5" fill="none"/>
+          <text x="50" y="70" textAnchor="middle" fontSize="36" fontWeight="900" fill="#fbbf24" fontFamily="serif">G</text>
+        </svg>
+      </>}
     </div>
   );
 }
 
-// ── Window controls ────────────────────────────────────────────────────────────
+// ── Window controls ───────────────────────────────────────────────────────────
 async function getWin() {
   const { Window } = await import('@tauri-apps/api/window');
   return Window.getCurrent();
 }
 
-// ── Clock ──────────────────────────────────────────────────────────────────────
+// ── Clock ─────────────────────────────────────────────────────────────────────
 function useClock(lang: Language) {
   const [clock, setClock] = useState('--:--:--');
   useEffect(() => {
     const locale = lang === 'tr' ? 'tr-TR' : lang === 'es' ? 'es-ES' : 'en-GB';
-    const id = setInterval(() => setClock(new Date().toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', second: '2-digit' })), 1000);
+    const id = setInterval(() => setClock(new Date().toLocaleTimeString(locale, { hour:'2-digit', minute:'2-digit', second:'2-digit' })), 1000);
     return () => clearInterval(id);
   }, [lang]);
   return clock;
 }
 
-// ── Notes ──────────────────────────────────────────────────────────────────────
+// ── Notes ─────────────────────────────────────────────────────────────────────
 interface Note { id: number; text: string; ts: number; }
 function useNotes() {
   const [notes, setNotes] = useState<Note[]>(() => { try { return JSON.parse(localStorage.getItem('jarvis_notes') || '[]'); } catch { return []; } });
@@ -209,248 +155,300 @@ function useNotes() {
   };
 }
 
-// ── World Clock ────────────────────────────────────────────────────────────────
+// ── World Clock Modal ─────────────────────────────────────────────────────────
 const WORLD_CITIES = [
-  { name: 'Istanbul',     tz: 'Europe/Istanbul' },
-  { name: 'London',       tz: 'Europe/London' },
-  { name: 'New York',     tz: 'America/New_York' },
-  { name: 'Los Angeles',  tz: 'America/Los_Angeles' },
-  { name: 'Tokyo',        tz: 'Asia/Tokyo' },
-  { name: 'Dubai',        tz: 'Asia/Dubai' },
-  { name: 'Paris',        tz: 'Europe/Paris' },
-  { name: 'Sydney',       tz: 'Australia/Sydney' },
-  { name: 'Berlin',       tz: 'Europe/Berlin' },
-  { name: 'Singapore',    tz: 'Asia/Singapore' },
-  { name: 'São Paulo',    tz: 'America/Sao_Paulo' },
-  { name: 'Mumbai',       tz: 'Asia/Kolkata' },
-  { name: 'Moscow',       tz: 'Europe/Moscow' },
-  { name: 'Beijing',      tz: 'Asia/Shanghai' },
-  { name: 'Cairo',        tz: 'Africa/Cairo' },
-  { name: 'Toronto',      tz: 'America/Toronto' },
-  { name: 'Chicago',      tz: 'America/Chicago' },
-  { name: 'Seoul',        tz: 'Asia/Seoul' },
-  { name: 'Amsterdam',    tz: 'Europe/Amsterdam' },
-  { name: 'Mexico City',  tz: 'America/Mexico_City' },
+  {name:'Istanbul',tz:'Europe/Istanbul'},{name:'London',tz:'Europe/London'},
+  {name:'New York',tz:'America/New_York'},{name:'Los Angeles',tz:'America/Los_Angeles'},
+  {name:'Tokyo',tz:'Asia/Tokyo'},{name:'Dubai',tz:'Asia/Dubai'},
+  {name:'Paris',tz:'Europe/Paris'},{name:'Sydney',tz:'Australia/Sydney'},
+  {name:'Berlin',tz:'Europe/Berlin'},{name:'Singapore',tz:'Asia/Singapore'},
+  {name:'São Paulo',tz:'America/Sao_Paulo'},{name:'Mumbai',tz:'Asia/Kolkata'},
+  {name:'Moscow',tz:'Europe/Moscow'},{name:'Beijing',tz:'Asia/Shanghai'},
+  {name:'Cairo',tz:'Africa/Cairo'},{name:'Toronto',tz:'America/Toronto'},
+  {name:'Chicago',tz:'America/Chicago'},{name:'Seoul',tz:'Asia/Seoul'},
+  {name:'Amsterdam',tz:'Europe/Amsterdam'},{name:'Mexico City',tz:'America/Mexico_City'},
 ];
 
-function WorldClockModal({ open, onClose, t }: { open: boolean; onClose: () => void; t: I18n }) {
+function WorldClockModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null }) {
   const [search, setSearch] = useState('');
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!open) return;
-    const id = setInterval(() => setTick(x => x + 1), 1000);
-    return () => clearInterval(id);
-  }, [open]);
-
+  const [, setTick] = useState(0);
+  useEffect(() => { if (!open) return; const id = setInterval(()=>setTick(x=>x+1),1000); return()=>clearInterval(id); }, [open]);
   const filtered = WORLD_CITIES.filter(c => c.name.toLowerCase().includes(search.toLowerCase()));
-
-  function getCityTime(tz: string) {
-    return new Date().toLocaleTimeString('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  }
-  function getCityDate(tz: string) {
-    return new Date().toLocaleDateString('en-GB', { timeZone: tz, day: '2-digit', month: 'short' });
-  }
-
+  const getCityTime = (tz:string) => new Date().toLocaleTimeString('en-GB',{timeZone:tz,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const getCityDate = (tz:string) => new Date().toLocaleDateString('en-GB',{timeZone:tz,day:'2-digit',month:'short'});
   return (
-    <Modal open={open} onClose={onClose} title={t.worldClock}>
-      <div className="mb-3">
-        <input
-          className="w-full px-3 py-2 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-black/[0.02] dark:bg-white/[0.04] text-[12px] text-[#1a1a1a] dark:text-[#e8e8ea] focus:outline-none focus:border-blue-300 dark:focus:border-blue-700 transition-colors no-drag"
-          placeholder={t.searchCity}
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-        />
+    <Modal open={open} onClose={onClose} title={t.worldClock} tc={tc}>
+      <div className="mb-3 no-drag">
+        <input className={cn('w-full px-3 py-2 rounded-xl border text-[12px] focus:outline-none transition-colors',
+          tc ? 'bg-white/5 border-white/10 text-white placeholder-white/30 focus:border-white/30'
+             : 'bg-black/[0.02] dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.1] text-[#1a1a1a] dark:text-[#e8e8ea] focus:border-blue-300 dark:focus:border-blue-700')}
+          placeholder={t.searchCity} value={search} onChange={e=>setSearch(e.target.value)} />
       </div>
       <div className="flex flex-col gap-1.5 overflow-y-auto max-h-[360px]">
         {filtered.map(city => (
-          <div key={city.tz} className="flex items-center justify-between px-3 py-2 rounded-xl bg-black/[0.02] dark:bg-white/[0.03] border border-black/[0.04] dark:border-white/[0.05]">
+          <div key={city.tz} style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:undefined}
+            className={cn('flex items-center justify-between px-3 py-2 rounded-xl border',
+              !tc && 'bg-black/[0.02] dark:bg-white/[0.03] border-black/[0.04] dark:border-white/[0.05]')}>
             <div>
-              <div className="text-[12px] font-semibold text-[#1a1a1a] dark:text-[#e8e8ea]">{city.name}</div>
-              <div className="text-[9px] text-black/30 dark:text-white/30">{getCityDate(city.tz)}</div>
+              <div className="text-[12px] font-semibold" style={{color:tc?tc.textPrimary:undefined}}
+                >{city.name}</div>
+              <div className="text-[9px]" style={{color:tc?tc.textMuted:undefined}}
+                ><span className={!tc?'text-black/30 dark:text-white/30':''}>{getCityDate(city.tz)}</span></div>
             </div>
-            <div className="font-mono text-[14px] font-bold text-[#1a1a1a] dark:text-[#e8e8ea] tabular-nums">{getCityTime(city.tz)}</div>
+            <div className="font-mono text-[14px] font-bold tabular-nums" style={{color:tc?tc.accent:undefined}}
+              ><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{getCityTime(city.tz)}</span></div>
           </div>
         ))}
       </div>
-      <button onClick={onClose} className="mt-3 w-full py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">{t.close}</button>
+      <button onClick={onClose} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+        className={cn('mt-3 w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',
+          !tc && 'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+        {t.close}
+      </button>
     </Modal>
   );
 }
 
-// ── Image Tools ────────────────────────────────────────────────────────────────
-function ImageToolsModal({ open, onClose, dark }: { open: boolean; onClose: () => void; dark: boolean }) {
-  const [img, setImg] = useState<string | null>(null);
+// ── Image Tools Modal ─────────────────────────────────────────────────────────
+function ImageToolsModal({ open, onClose, tc }: { open:boolean; onClose:()=>void; tc:ThemeConfig|null }) {
+  const [img, setImg]         = useState<string|null>(null);
   const [fileName, setFileName] = useState('');
-  const [op, setOp] = useState<'grayscale' | 'invert' | 'blur' | 'brightness' | 'contrast' | 'sepia' | null>(null);
+  const [tab, setTab]         = useState<'edit'|'upscale'|'sort'>('edit');
+  const [op, setOp]           = useState<string|null>(null);
   const [brightness, setBrightness] = useState(100);
   const [contrast, setContrast]     = useState(100);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [upscaleScale, setUpscaleScale] = useState(2);
+  const [processing, setProcessing] = useState(false);
+  const [sortResult, setSortResult] = useState<string|null>(null);
 
   function loadFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const f = e.target.files?.[0];
-    if (!f) return;
+    const f = e.target.files?.[0]; if (!f) return;
     setFileName(f.name);
-    const reader = new FileReader();
-    reader.onload = ev => { setImg(ev.target?.result as string); setOp(null); };
-    reader.readAsDataURL(f);
+    const r = new FileReader(); r.onload = ev => { setImg(ev.target?.result as string); setOp(null); }; r.readAsDataURL(f);
   }
-
   function getFilter() {
-    if (op === 'grayscale') return 'grayscale(100%)';
-    if (op === 'invert')    return 'invert(100%)';
-    if (op === 'blur')      return 'blur(4px)';
-    if (op === 'sepia')     return 'sepia(100%)';
-    if (op === 'brightness') return `brightness(${brightness}%)`;
-    if (op === 'contrast')  return `contrast(${contrast}%)`;
+    if (op==='grayscale') return 'grayscale(100%)';
+    if (op==='invert')    return 'invert(100%)';
+    if (op==='blur')      return 'blur(4px)';
+    if (op==='sepia')     return 'sepia(100%)';
+    if (op==='brightness') return `brightness(${brightness}%)`;
+    if (op==='contrast')  return `contrast(${contrast}%)`;
     return 'none';
   }
-
   function download() {
     if (!img) return;
     const canvas = document.createElement('canvas');
     const image = new window.Image();
     image.onload = () => {
-      canvas.width = image.width; canvas.height = image.height;
-      const ctx = canvas.getContext('2d')!;
-      ctx.filter = getFilter();
-      ctx.drawImage(image, 0, 0);
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = 'jarvis_' + (fileName || 'image.png');
-      a.click();
+      canvas.width=image.width; canvas.height=image.height;
+      const ctx=canvas.getContext('2d')!; ctx.filter=getFilter(); ctx.drawImage(image,0,0);
+      const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
+      a.download='jarvis_'+fileName; a.click();
     };
     image.src = img;
   }
 
-  const ops: { key: typeof op; label: string; icon: string }[] = [
-    { key: 'grayscale',  label: 'Grayscale', icon: '◑' },
-    { key: 'invert',     label: 'Invert',    icon: '◎' },
-    { key: 'sepia',      label: 'Sepia',     icon: '🟫' },
-    { key: 'blur',       label: 'Blur',      icon: '◌' },
-    { key: 'brightness', label: 'Brightness',icon: '☀' },
-    { key: 'contrast',   label: 'Contrast',  icon: '◑' },
+  async function doUpscale() {
+    if (!img) return;
+    setProcessing(true);
+    await new Promise(r => setTimeout(r, 100));
+    const image = new window.Image();
+    image.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = image.width  * upscaleScale;
+      canvas.height = image.height * upscaleScale;
+      const ctx = canvas.getContext('2d')!;
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = `upscaled_x${upscaleScale}_${fileName}`;
+      a.click();
+      setProcessing(false);
+    };
+    image.src = img;
+  }
+
+  const tabStyle = (active: boolean) => cn(
+    'flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all',
+    active
+      ? tc ? 'text-white' : 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]'
+      : tc ? 'text-white/30' : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40'
+  );
+  const activeTabStyle = (active: boolean): React.CSSProperties => tc && active
+    ? { background: tc.accent, color: '#000' } : {};
+
+  const editOps = [
+    {key:'grayscale',label:'Grayscale',icon:'◑'},
+    {key:'invert',label:'Invert',icon:'◎'},
+    {key:'sepia',label:'Sepia',icon:'🟫'},
+    {key:'blur',label:'Blur',icon:'◌'},
+    {key:'brightness',label:'Brightness',icon:'☀'},
+    {key:'contrast',label:'Contrast',icon:'◧'},
   ];
 
   return (
-    <Modal open={open} onClose={onClose} title="IMAGE TOOLS" wide>
-      <div className="flex flex-col gap-3">
-        {/* Upload */}
-        <label className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl border-2 border-dashed border-black/[0.12] dark:border-white/[0.12] cursor-pointer hover:bg-black/[0.02] dark:hover:bg-white/[0.03] transition-colors no-drag">
-          <Image size={16} className="text-black/30 dark:text-white/30" />
-          <span className="text-[12px] text-black/40 dark:text-white/40">{fileName || 'Click to upload image'}</span>
-          <input type="file" accept="image/*" className="hidden" onChange={loadFile} />
-        </label>
-
-        {img && (
-          <>
-            {/* Preview */}
-            <div className="relative rounded-2xl overflow-hidden bg-black/[0.03] dark:bg-white/[0.03] border border-black/[0.05] dark:border-white/[0.05] flex items-center justify-center" style={{ minHeight: 160, maxHeight: 220 }}>
-              <img src={img} alt="preview" style={{ maxHeight: 200, maxWidth: '100%', filter: getFilter(), borderRadius: 12, transition: 'filter 0.3s' }} />
-            </div>
-
-            {/* Operations */}
-            <div className="grid grid-cols-3 gap-1.5">
-              {ops.map(o => (
-                <button key={o.key}
-                  onClick={() => setOp(prev => prev === o.key ? null : o.key)}
-                  className={cn('py-2 rounded-xl text-[11px] font-semibold transition-all border',
-                    op === o.key
-                      ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent'
-                      : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-black/50 dark:text-white/50 hover:bg-black/[0.06]'
-                  )}
-                >{o.icon} {o.label}</button>
-              ))}
-            </div>
-
-            {op === 'brightness' && (
-              <div className="flex items-center gap-3 no-drag">
-                <span className="text-[10px] text-black/40 dark:text-white/40 w-20">Brightness</span>
-                <input type="range" min={0} max={200} value={brightness} onChange={e => setBrightness(+e.target.value)} className="flex-1" />
-                <span className="text-[10px] font-mono text-black/50 dark:text-white/50 w-8">{brightness}%</span>
-              </div>
-            )}
-            {op === 'contrast' && (
-              <div className="flex items-center gap-3 no-drag">
-                <span className="text-[10px] text-black/40 dark:text-white/40 w-20">Contrast</span>
-                <input type="range" min={0} max={200} value={contrast} onChange={e => setContrast(+e.target.value)} className="flex-1" />
-                <span className="text-[10px] font-mono text-black/50 dark:text-white/50 w-8">{contrast}%</span>
-              </div>
-            )}
-
-            <button onClick={download} className="w-full py-2.5 rounded-xl bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] text-[12px] font-bold hover:opacity-80 transition-opacity">
-              ⬇ Download
-            </button>
-          </>
-        )}
+    <Modal open={open} onClose={onClose} title="IMAGE TOOLS" wide tc={tc}>
+      {/* Tabs */}
+      <div className="flex gap-1 mb-3 no-drag" style={tc?{background:'rgba(255,255,255,0.05)',padding:'4px',borderRadius:'12px'}:{background:'rgba(0,0,0,0.04)',padding:'4px',borderRadius:'12px'}}>
+        {(['edit','upscale','sort'] as const).map(tab2 => (
+          <button key={tab2} onClick={()=>setTab(tab2)}
+            className={tabStyle(tab===tab2)} style={activeTabStyle(tab===tab2)}>
+            {tab2 === 'edit' ? '🎨 Edit' : tab2 === 'upscale' ? '🔍 Upscale' : '📂 Sort'}
+          </button>
+        ))}
       </div>
-      <canvas ref={canvasRef} className="hidden" />
-      <button onClick={onClose} className="mt-3 w-full py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">Close</button>
+
+      {/* Upload */}
+      <label className={cn('flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border-2 border-dashed cursor-pointer transition-colors no-drag mb-3',
+        tc ? 'border-white/15 hover:border-white/30 text-white/40' : 'border-black/[0.12] dark:border-white/[0.12] hover:bg-black/[0.02] dark:hover:bg-white/[0.03] text-black/40 dark:text-white/40')}>
+        <Image size={14} />
+        <span className="text-[11px]">{fileName || 'Click to upload image'}</span>
+        <input type="file" accept="image/*" className="hidden" onChange={loadFile} />
+      </label>
+
+      {tab === 'edit' && img && (
+        <>
+          <div className="relative rounded-2xl overflow-hidden flex items-center justify-center mb-3" style={{minHeight:140,maxHeight:200,background:tc?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.03)'}}>
+            <img src={img} alt="preview" style={{maxHeight:190,maxWidth:'100%',filter:getFilter(),borderRadius:10,transition:'filter 0.3s'}} />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5 mb-3">
+            {editOps.map(o => (
+              <button key={o.key} onClick={()=>setOp(prev=>prev===o.key?null:o.key)}
+                style={op===o.key && tc ? {background:tc.accent,color:'#000',borderColor:'transparent'} : tc ? {background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted} : undefined}
+                className={cn('py-1.5 rounded-xl text-[10px] font-semibold transition-all border',
+                  !tc && (op===o.key ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent'
+                                     : 'bg-black/[0.03] dark:bg-white/[0.04] border-black/[0.06] dark:border-white/[0.06] text-black/50 dark:text-white/50'))}>
+                {o.icon} {o.label}
+              </button>
+            ))}
+          </div>
+          {op==='brightness' && <div className="flex items-center gap-3 no-drag mb-2"><span className="text-[10px] w-20" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Brightness</span></span><input type="range" min={0} max={200} value={brightness} onChange={e=>setBrightness(+e.target.value)} className="flex-1"/><span className="text-[10px] font-mono w-8" style={{color:tc?tc.textMuted:undefined}}>{brightness}%</span></div>}
+          {op==='contrast' && <div className="flex items-center gap-3 no-drag mb-2"><span className="text-[10px] w-20" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Contrast</span></span><input type="range" min={0} max={200} value={contrast} onChange={e=>setContrast(+e.target.value)} className="flex-1"/><span className="text-[10px] font-mono w-8" style={{color:tc?tc.textMuted:undefined}}>{contrast}%</span></div>}
+          <button onClick={download} style={tc?{background:tc.accent,color:'#000'}:undefined}
+            className={cn('w-full py-2.5 rounded-xl text-[12px] font-bold transition-opacity hover:opacity-80',
+              !tc && 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
+            ⬇ Download
+          </button>
+        </>
+      )}
+
+      {tab === 'upscale' && (
+        <div className="flex flex-col gap-3">
+          <div className="text-[11px] font-semibold" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/50 dark:text-white/50':''}>Upscale factor (browser-based, uses Lanczos-like smoothing)</span></div>
+          <div className="flex gap-2 no-drag">
+            {[2,3,4].map(s=>(
+              <button key={s} onClick={()=>setUpscaleScale(s)}
+                style={upscaleScale===s&&tc?{background:tc.accent,color:'#000'}:tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted}:undefined}
+                className={cn('flex-1 py-2 rounded-xl text-[12px] font-bold border transition-all',
+                  !tc && (upscaleScale===s?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent'
+                                         :'bg-black/[0.04] dark:bg-white/[0.06] border-black/[0.08] dark:border-white/[0.08] text-black/50 dark:text-white/50'))}>
+                x{s}
+              </button>
+            ))}
+          </div>
+          {img && <div className="text-[10px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Image loaded: {fileName}</span></div>}
+          <button onClick={doUpscale} disabled={!img||processing}
+            style={tc&&!(!img||processing)?{background:tc.accent,color:'#000'}:undefined}
+            className={cn('w-full py-2.5 rounded-xl text-[12px] font-bold transition-all',
+              !tc && 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]',
+              (!img||processing)&&'opacity-40 cursor-not-allowed')}>
+            {processing ? '⏳ Processing...' : `🔍 Upscale x${upscaleScale} & Download`}
+          </button>
+          <div className="text-[9px] p-2.5 rounded-xl" style={tc?{background:'rgba(255,255,255,0.05)',color:tc.textMuted}:{background:'rgba(0,0,0,0.03)',color:'rgba(0,0,0,0.3)'}}>
+            💡 For advanced algorithms (Smart / Photo / Sharpen), run <code className="font-mono">python image_upscaler.py</code> from the image-tools-box CLI.
+          </div>
+        </div>
+      )}
+
+      {tab === 'sort' && (
+        <div className="flex flex-col gap-3">
+          <div className="text-[11px] leading-relaxed" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/50 dark:text-white/50':''}>File sorting organizes files by type into folders. This runs via the Python CLI tool bundled with JARVIS.</span></div>
+          <div className="rounded-xl p-3" style={tc?{background:'rgba(255,255,255,0.05)'}:{background:'rgba(0,0,0,0.03)'}}>
+            <div className="text-[10px] font-bold mb-2" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/50 dark:text-white/50':''}>Supported Groups</span></div>
+            {[['🖼', 'Images','jpg png gif webp bmp'],['🎬','Videos','mp4 mkv avi mov'],['🎵','Music','mp3 flac wav aac'],['📄','Documents','pdf docx xlsx pptx'],['💻','Code','py js ts html css'],['📦','Archives','zip rar 7z tar']].map(([icon,name,exts])=>(
+              <div key={name} className="flex items-center gap-2 py-1 border-b last:border-0" style={tc?{borderColor:'rgba(255,255,255,0.06)'}:{borderColor:'rgba(0,0,0,0.05)'}}>
+                <span>{icon}</span>
+                <span className="text-[10px] font-semibold w-20" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{name}</span></span>
+                <span className="text-[9px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{exts}</span></span>
+              </div>
+            ))}
+          </div>
+          <div className="rounded-xl p-3 font-mono text-[10px]" style={tc?{background:'rgba(0,0,0,0.3)',color:tc.textMuted}:{background:'rgba(0,0,0,0.05)',color:'rgba(0,0,0,0.5)'}}>
+            python image_upscaler.py
+          </div>
+          {sortResult && <div className="text-[11px] text-green-400">{sortResult}</div>}
+        </div>
+      )}
+
+      {tab !== 'edit' || !img ? null : null}
+      <button onClick={onClose} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+        className={cn('mt-3 w-full py-2 rounded-xl text-[12px] font-semibold transition-colors',
+          !tc && 'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+        Close
+      </button>
     </Modal>
   );
 }
 
 // ── Premium Modal ─────────────────────────────────────────────────────────────
-function PremiumModal({ open, onClose, t }: { open: boolean; onClose: () => void; t: I18n }) {
+function PremiumModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null }) {
   return (
-    <Modal open={open} onClose={onClose} title={t.premiumTitle}>
+    <Modal open={open} onClose={onClose} title={t.premiumTitle} tc={tc}>
       <div className="flex flex-col items-center gap-4 py-2">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg">
-          👑
-        </div>
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg">👑</div>
         <div className="text-center">
-          <div className="text-[16px] font-extrabold text-[#1a1a1a] dark:text-[#e8e8ea] mb-1">JARVIS Premium</div>
-          <div className="text-[12px] text-black/40 dark:text-white/40 max-w-[260px]">
-            Unlock advanced features: Spotify lyrics, custom themes, cloud sync and more.
-          </div>
+          <div className="text-[16px] font-extrabold mb-1" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>JARVIS Premium</span></div>
+          <div className="text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40 max-w-[260px]':''}>Unlock advanced features: Spotify lyrics, custom themes, cloud sync and more.</span></div>
         </div>
-        <div className="w-full rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-900/20 p-4">
-          <div className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mb-2">Want Premium access?</div>
+        <div className="w-full rounded-2xl border p-4" style={tc?{background:'rgba(251,191,36,0.08)',borderColor:'rgba(251,191,36,0.25)'}:{background:'rgb(255,251,235)',borderColor:'rgb(253,230,138)'}}>
+          <div className="text-[11px] font-bold mb-2 text-amber-600 dark:text-amber-400">Want Premium access?</div>
           <div className="text-[11px] text-amber-600 dark:text-amber-500">
-            Contact on Discord:<br />
-            <span className="font-bold text-[13px] text-amber-700 dark:text-amber-300 font-mono select-all">Raldexx</span>
+            Contact on Discord:<br/>
+            <span className="font-bold text-[15px] font-mono select-all text-amber-700 dark:text-amber-300">.raldexx</span>
           </div>
         </div>
-        <div className="text-[10px] text-black/20 dark:text-white/20 text-center">Premium is manually granted.<br/>Reach out with your username to get access.</div>
+        <div className="text-[10px] text-center" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>Premium is manually granted.<br/>Reach out with your username to get access.</span></div>
       </div>
-      <button onClick={onClose} className="mt-2 w-full py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">{t.close}</button>
+      <button onClick={onClose} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+        className={cn('mt-2 w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',
+          !tc && 'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+        {t.close}
+      </button>
     </Modal>
   );
 }
 
-// ── First-run Tour ────────────────────────────────────────────────────────────
-function TourModal({ open, onClose, t }: { open: boolean; onClose: () => void; t: I18n }) {
+// ── Tour Modal ────────────────────────────────────────────────────────────────
+function TourModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null }) {
   const [step, setStep] = useState(0);
   const steps = Object.values(t.tour);
   const isLast = step === steps.length - 1;
-
   return (
-    <Modal open={open} onClose={onClose} title={t.firstRunTitle}>
+    <Modal open={open} onClose={onClose} title={t.firstRunTitle} tc={tc}>
       <div className="flex flex-col gap-4 py-1">
-        <div className="text-[12px] text-black/50 dark:text-white/50">{t.firstRunDesc}</div>
-        {/* Step indicator */}
+        <div className="text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/50 dark:text-white/50':''}>{t.firstRunDesc}</span></div>
         <div className="flex gap-1 justify-center">
-          {steps.map((_, i) => (
-            <div key={i} onClick={() => setStep(i)} className={cn('h-1.5 rounded-full cursor-pointer transition-all', i === step ? 'w-5 bg-blue-500' : 'w-1.5 bg-black/10 dark:bg-white/10')} />
+          {steps.map((_,i) => (
+            <div key={i} onClick={()=>setStep(i)}
+              style={i===step&&tc?{background:tc.accent}:undefined}
+              className={cn('h-1.5 rounded-full cursor-pointer transition-all',i===step?'w-5 '+(tc?'':'bg-blue-500'):'w-1.5 bg-black/10 dark:bg-white/10')} />
           ))}
         </div>
         <AnimatePresence mode="wait">
-          <motion.div key={step}
-            initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }}
-            transition={{ duration: 0.18 }}
-            className="bg-black/[0.03] dark:bg-white/[0.04] rounded-2xl p-4 border border-black/[0.05] dark:border-white/[0.06] min-h-[64px] flex items-center"
-          >
-            <span className="text-[13px] text-[#1a1a1a] dark:text-[#e8e8ea]">{steps[step]}</span>
+          <motion.div key={step} initial={{opacity:0,x:16}} animate={{opacity:1,x:0}} exit={{opacity:0,x:-16}} transition={{duration:0.18}}
+            className="rounded-2xl p-4 border min-h-[64px] flex items-center"
+            style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:{background:'rgba(0,0,0,0.03)',borderColor:'rgba(0,0,0,0.05)'}}>
+            <span className="text-[13px]" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{steps[step]}</span></span>
           </motion.div>
         </AnimatePresence>
         <div className="flex gap-2">
-          {step > 0 && (
-            <button onClick={() => setStep(s => s - 1)} className="flex-1 py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">←</button>
-          )}
-          <button
-            onClick={() => isLast ? onClose() : setStep(s => s + 1)}
-            className="flex-1 py-2.5 rounded-xl bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] text-[12px] font-bold hover:opacity-90 transition-opacity"
-          >
-            {isLast ? t.gotIt : '→'}
+          {step > 0 && <button onClick={()=>setStep(s=>s-1)} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('flex-1 py-2.5 rounded-xl text-[12px] font-semibold transition-colors',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40')}>←</button>}
+          <button onClick={()=>isLast?onClose():setStep(s=>s+1)}
+            style={tc?{background:tc.accent,color:'#000'}:undefined}
+            className={cn('flex-1 py-2.5 rounded-xl text-[12px] font-bold transition-opacity hover:opacity-90',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
+            {isLast?t.gotIt:'→'}
           </button>
         </div>
       </div>
@@ -459,138 +457,110 @@ function TourModal({ open, onClose, t }: { open: boolean; onClose: () => void; t
 }
 
 // ── Notes + Timer Modal ───────────────────────────────────────────────────────
-function NotesModal({ open, onClose, t, notes, addNote, removeNote, updateNote }: {
-  open: boolean; onClose: () => void; t: I18n;
-  notes: Note[]; addNote: (s: string) => void; removeNote: (id: number) => void; updateNote: (id: number, s: string) => void;
+function NotesModal({ open, onClose, t, tc, notes, addNote, removeNote, updateNote }: {
+  open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null;
+  notes:Note[]; addNote:(s:string)=>void; removeNote:(id:number)=>void; updateNote:(id:number,s:string)=>void;
 }) {
   const [noteInput, setNoteInput] = useState('');
-  const [editId, setEditId]       = useState<number | null>(null);
-  // Timer state
-  const [timerMode, setTimerMode] = useState<'up' | 'down'>('up');
+  const [editId, setEditId]       = useState<number|null>(null);
+  const [timerMode, setTimerMode] = useState<'up'|'down'>('up');
   const [timerSecs, setTimerSecs] = useState(0);
   const [timerInput, setTimerInput] = useState(300);
   const [timerRunning, setTimerRunning] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
-  function fmtNoteTs(ts: number) {
-    return new Date(ts).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) + ' ' +
-           new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  function fmtNoteTs(ts:number) {
+    return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }
-
-  function fmtTime(s: number) {
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    if (h > 0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  function fmtTime(s:number) {
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+    if(h>0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
     return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
   }
+  useEffect(()=>{
+    if(timerRunning){
+      timerRef.current=setInterval(()=>setTimerSecs(s=>{
+        if(timerMode==='up') return s+1;
+        if(s<=1){ setTimerRunning(false); try{ if('Notification' in window&&Notification.permission==='granted'){new Notification('JARVIS Timer',{body:'Timer finished!'})}else alert('⏰ Timer finished!');}catch{}; return 0; }
+        return s-1;
+      }),1000);
+    } else { if(timerRef.current) clearInterval(timerRef.current); }
+    return ()=>{ if(timerRef.current) clearInterval(timerRef.current); };
+  },[timerRunning,timerMode]);
 
-  useEffect(() => {
-    if (timerRunning) {
-      timerRef.current = setInterval(() => {
-        setTimerSecs(s => {
-          if (timerMode === 'up') return s + 1;
-          if (s <= 1) {
-            setTimerRunning(false);
-            // Windows notification via browser Notification API
-            try {
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification('JARVIS Timer', { body: 'Timer finished!' });
-              } else {
-                alert('⏰ Timer finished!');
-              }
-            } catch {}
-            return 0;
-          }
-          return s - 1;
-        });
-      }, 1000);
-    } else {
-      if (timerRef.current) clearInterval(timerRef.current);
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [timerRunning, timerMode]);
+  function startTimer(){ if(timerMode==='down') setTimerSecs(timerInput); else setTimerSecs(0); setTimerRunning(true); }
+  function stopTimer(){ setTimerRunning(false); }
+  function resetTimer(){ setTimerRunning(false); setTimerSecs(timerMode==='down'?timerInput:0); }
 
-  function startTimer() {
-    if (timerMode === 'down') setTimerSecs(timerInput);
-    else setTimerSecs(0);
-    setTimerRunning(true);
-  }
-
-  function stopTimer() { setTimerRunning(false); }
-  function resetTimer() { setTimerRunning(false); setTimerSecs(timerMode === 'down' ? timerInput : 0); }
+  const inputCls = cn('w-full px-3 py-2.5 rounded-xl border text-[12px] resize-none focus:outline-none transition-colors',
+    tc ? 'bg-white/5 border-white/10 text-white placeholder-white/30 focus:border-white/30'
+       : 'bg-black/[0.02] dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.1] text-[#1a1a1a] dark:text-[#e8e8ea] focus:border-blue-300 dark:focus:border-blue-700');
 
   return (
-    <Modal open={open} onClose={() => { onClose(); setEditId(null); setNoteInput(''); }} title={t.quickNotes} wide>
+    <Modal open={open} onClose={()=>{onClose();setEditId(null);setNoteInput('');}} title={t.quickNotes} wide tc={tc}>
       <div className="grid grid-cols-2 gap-4">
         {/* LEFT — Notes */}
         <div className="flex flex-col gap-2">
           <div className="flex flex-col gap-2 no-drag">
-            <textarea
-              className="w-full px-3 py-2.5 rounded-xl border border-black/[0.08] dark:border-white/[0.1] bg-black/[0.02] dark:bg-white/[0.04] text-[12px] text-[#1a1a1a] dark:text-[#e8e8ea] resize-none focus:outline-none focus:border-blue-300 dark:focus:border-blue-700 transition-colors"
-              placeholder={t.notePlaceholder}
-              rows={3}
-              value={noteInput}
-              onChange={e => setNoteInput(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter' && e.ctrlKey) { if (editId !== null) { updateNote(editId, noteInput); setEditId(null); } else { addNote(noteInput); } setNoteInput(''); } }}
-            />
+            <textarea className={inputCls} placeholder={t.notePlaceholder} rows={3} value={noteInput}
+              onChange={e=>setNoteInput(e.target.value)}
+              onKeyDown={e=>{if(e.key==='Enter'&&e.ctrlKey){if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}} />
             <div className="flex gap-2 justify-end">
-              {editId !== null && <button onClick={() => { setEditId(null); setNoteInput(''); }} className="px-3 py-1.5 rounded-lg bg-black/[0.05] text-[11px] font-semibold text-black/40">{t.cancel}</button>}
-              <button onClick={() => { if (!noteInput.trim()) return; if (editId !== null) { updateNote(editId, noteInput); setEditId(null); } else { addNote(noteInput); } setNoteInput(''); }}
-                className="px-4 py-1.5 rounded-lg bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] text-[11px] font-bold">
-                {editId !== null ? t.update : t.add}
+              {editId!==null&&<button onClick={()=>{setEditId(null);setNoteInput('');}} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold',!tc&&'bg-black/[0.05] text-black/40')}>{t.cancel}</button>}
+              <button onClick={()=>{if(!noteInput.trim())return;if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}
+                style={tc?{background:tc.accent,color:'#000'}:undefined}
+                className={cn('px-4 py-1.5 rounded-lg text-[11px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
+                {editId!==null?t.update:t.add}
               </button>
             </div>
           </div>
-          <div className="flex flex-col gap-2 overflow-y-auto max-h-[220px]">
-            {notes.length === 0 ? <div className="text-center py-6 text-[12px] text-black/20 dark:text-white/20">{t.noNotes}</div>
-              : notes.map(n => (
-                <div key={n.id} className={cn('rounded-xl border p-2.5', editId === n.id ? 'border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20' : 'border-black/[0.05] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.03]')}>
-                  <div className="text-[12px] text-[#1a1a1a] dark:text-[#e8e8ea] whitespace-pre-wrap break-words mb-1.5">{n.text}</div>
+          <div className="flex flex-col gap-2 overflow-y-auto max-h-[230px]">
+            {notes.length===0
+              ? <div className="text-center py-6 text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.noNotes}</span></div>
+              : notes.map(n=>(
+                <div key={n.id} className="rounded-xl border p-2.5"
+                  style={tc?{background:editId===n.id?'rgba(255,255,255,0.08)':tc.cardBg,borderColor:editId===n.id?tc.accent:tc.cardBorder}:undefined}>
+                  <div className="text-[12px] whitespace-pre-wrap break-words mb-1.5" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{n.text}</span></div>
                   <div className="flex justify-between items-center">
-                    <span className="text-[9px] text-black/20 dark:text-white/20">{fmtNoteTs(n.ts)}</span>
+                    <span className="text-[9px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{fmtNoteTs(n.ts)}</span></span>
                     <div className="flex gap-1.5">
-                      <button onClick={() => { setEditId(n.id); setNoteInput(n.text); }} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500">{t.edit}</button>
-                      <button onClick={() => removeNote(n.id)} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400">{t.delete}</button>
+                      <button onClick={()=>{setEditId(n.id);setNoteInput(n.text);}} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500">{t.edit}</button>
+                      <button onClick={()=>removeNote(n.id)} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400">{t.delete}</button>
                     </div>
                   </div>
                 </div>
-              ))
-            }
+              ))}
           </div>
         </div>
-
         {/* RIGHT — Timer */}
         <div className="flex flex-col gap-3">
-          <div className="text-[9px] font-bold tracking-[0.12em] text-black/30 dark:text-white/30">{t.timer.toUpperCase()}</div>
-          {/* Mode */}
+          <div className="text-[9px] font-bold tracking-[0.12em]" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.timer.toUpperCase()}</span></div>
           <div className="flex gap-1 no-drag">
-            {(['up', 'down'] as const).map(m => (
-              <button key={m} onClick={() => { setTimerMode(m); resetTimer(); }}
-                className={cn('flex-1 py-1.5 rounded-xl text-[11px] font-semibold transition-all',
-                  timerMode === m ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40'
-                )}>{m === 'up' ? '▲ Count up' : '▼ Countdown'}</button>
+            {(['up','down'] as const).map(m=>(
+              <button key={m} onClick={()=>{setTimerMode(m);resetTimer();}}
+                style={timerMode===m&&tc?{background:tc.accent,color:'#000'}:tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted}:undefined}
+                className={cn('flex-1 py-1.5 rounded-xl text-[11px] font-semibold transition-all border',
+                  !tc&&(timerMode===m?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent':'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 border-transparent'))}>
+                {m==='up'?'▲ Up':'▼ Down'}
+              </button>
             ))}
           </div>
-          {/* Display */}
-          <div className="flex items-center justify-center py-5 bg-black/[0.03] dark:bg-white/[0.03] rounded-2xl border border-black/[0.05] dark:border-white/[0.05]">
-            <span className="font-mono text-[36px] font-extrabold text-[#1a1a1a] dark:text-[#e8e8ea] tabular-nums">{fmtTime(timerSecs)}</span>
+          <div className="flex items-center justify-center py-5 rounded-2xl border" style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:{background:'rgba(0,0,0,0.03)',borderColor:'rgba(0,0,0,0.05)'}}>
+            <span className="font-mono text-[36px] font-extrabold tabular-nums" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{fmtTime(timerSecs)}</span></span>
           </div>
-          {/* Countdown input */}
-          {timerMode === 'down' && !timerRunning && (
+          {timerMode==='down'&&!timerRunning&&(
             <div className="flex items-center gap-2 no-drag">
-              <span className="text-[10px] text-black/40 dark:text-white/40">Set (sec)</span>
-              <input type="number" min={1} max={86400} value={timerInput}
-                onChange={e => setTimerInput(Math.max(1, +e.target.value))}
-                className="flex-1 px-2 py-1 rounded-lg border border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[12px] font-mono text-[#1a1a1a] dark:text-[#e8e8ea] focus:outline-none"
-              />
+              <span className="text-[10px] w-16" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Sec</span></span>
+              <input type="number" min={1} max={86400} value={timerInput} onChange={e=>setTimerInput(Math.max(1,+e.target.value))}
+                className={cn('flex-1 px-2 py-1 rounded-lg border font-mono text-[12px] focus:outline-none',
+                  tc?'bg-white/5 border-white/10 text-white':'border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[#1a1a1a] dark:text-[#e8e8ea]')} />
             </div>
           )}
-          {/* Controls */}
           <div className="flex gap-2 no-drag">
             {!timerRunning
-              ? <button onClick={startTimer} className="flex-1 py-2 rounded-xl bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] text-[12px] font-bold">▶ Start</button>
-              : <button onClick={stopTimer}  className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[12px] font-bold">⏸ Pause</button>
-            }
-            <button onClick={resetTimer} className="flex-1 py-2 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40">↺ Reset</button>
+              ? <button onClick={startTimer} style={tc?{background:tc.accent,color:'#000'}:undefined} className={cn('flex-1 py-2 rounded-xl text-[12px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>▶ Start</button>
+              : <button onClick={stopTimer} className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[12px] font-bold">⏸ Pause</button>}
+            <button onClick={resetTimer} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('flex-1 py-2 rounded-xl text-[12px] font-semibold',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40')}>↺ Reset</button>
           </div>
         </div>
       </div>
@@ -598,7 +568,7 @@ function NotesModal({ open, onClose, t, notes, addNote, removeNote, updateNote }
   );
 }
 
-// ── Main App ───────────────────────────────────────────────────────────────────
+// ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
   const { sys, net, spotify, procs, weather, sysInfo, isDemo, cpuHist, ramHist, gpuHist, netHist, settings, updateSettings } = useSystemData();
   const t: I18n = TRANSLATIONS[settings.language];
@@ -606,449 +576,377 @@ export default function App() {
   const { notes, add: addNote, remove: removeNote, update: updateNote } = useNotes();
 
   const [modal, setModal] = useState<ModalType>(null);
-  const [chartKey, setChartKey] = useState<ChartKey | null>(null);
+  const [chartKey, setChartKey] = useState<ChartKey|null>(null);
   const [showTour, setShowTour] = useState(false);
 
-  // Artist theme
   const artistTheme: ArtistTheme = spotify.playing ? getArtistTheme(spotify.artist, spotify.track) : null;
-  const tc = artistTheme ? THEME_CFG[artistTheme] : null;
+  const tc: ThemeConfig|null = artistTheme ? THEME_CFG[artistTheme] : null;
 
-  // Dark mode
-  useEffect(() => {
-    document.documentElement.classList.toggle('dark', settings.darkTheme);
-  }, [settings.darkTheme]);
+  useEffect(() => { document.documentElement.classList.toggle('dark', settings.darkTheme); }, [settings.darkTheme]);
+  useEffect(() => { if (!settings.tourSeen) { const timer = setTimeout(()=>setShowTour(true),800); return ()=>clearTimeout(timer); } }, []);
 
-  // First-run tour
-  useEffect(() => {
-    if (!settings.tourSeen) {
-      const timer = setTimeout(() => setShowTour(true), 800);
-      return () => clearTimeout(timer);
-    }
-  }, []);
-
-  function closeTour() {
-    setShowTour(false);
-    updateSettings({ tourSeen: true });
-  }
-
+  function closeTour() { setShowTour(false); updateSettings({ tourSeen: true }); }
   function openChart(key: ChartKey) { setChartKey(key); setModal('chart'); }
 
   const perfCfg = PERF_CONFIG[settings.perfMode];
+  const appStyle: React.CSSProperties = tc ? { background: tc.bg } : {};
+  const bgClass = tc ? '' : 'bg-[#f5f5f7] dark:bg-[#111113]';
 
-  // ── Artist theme ────────────────────────────────────────────────────────────
-  const appStyle: React.CSSProperties = tc
-    ? { background: tc.bg }
-    : {};
-  const bgClass = artistTheme ? '' : 'bg-[#f5f5f7] dark:bg-[#111113]';
+  // Card style helper
+  const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => tc
+    ? { background: tc.cardBg, borderColor: tc.cardBorder, backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', ...extra }
+    : (extra || {});
+  const txt  = (opacity?: string): React.CSSProperties => tc ? { color: opacity ? `rgba(${hexToRgb(tc.textPrimary)},${opacity})` : tc.textPrimary } : {};
+  const muted = (): React.CSSProperties => tc ? { color: tc.textMuted } : {};
+
+  function hexToRgb(hex: string): string {
+    const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return r?`${parseInt(r[1],16)},${parseInt(r[2],16)},${parseInt(r[3],16)}`:'255,255,255';
+  }
+
+  const btnBase = cn('flex flex-col items-center gap-1 py-2.5 rounded-2xl text-[9px] font-bold tracking-[0.05em] transition-all duration-150 border');
+  const cardCls = cn('rounded-2xl border p-3.5 transition-all duration-150', !tc&&'bg-white dark:bg-[#1c1c1e] border-black/[0.06] dark:border-white/[0.07]');
+  const clickCardCls = cn(cardCls, 'cursor-pointer', !tc&&'hover:bg-black/[0.02] dark:hover:bg-white/[0.03]', tc&&'hover:opacity-90');
 
   return (
-    <div
-      className={cn('w-full min-h-screen p-4 flex flex-col gap-2.5 font-sans relative', bgClass)}
-      style={appStyle}
-      onMouseDown={async (e) => {
-        const t2 = e.target as HTMLElement;
-        if (t2.closest('.no-drag, button, input, textarea, select')) return;
-        try { (await getWin()).startDragging(); } catch {}
-      }}
-    >
-      {/* ── Artist background art ── */}
-      {artistTheme && <ArtistBackground theme={artistTheme} />}
+    <div className={cn('w-full min-h-screen font-sans relative', bgClass)} style={appStyle}>
+      {tc && <ArtistBackground theme={artistTheme!} />}
 
-      {/* All content above background */}
-      <div className="relative" style={{ zIndex: 1 }}>
+      {/* Scrollable content */}
+      <div className="relative overflow-y-auto" style={{ zIndex:1, padding:'12px', display:'flex', flexDirection:'column', gap:'8px', minHeight:'100vh' }}>
 
-      {/* ═══ HEADER ═══ */}
-      <Card tc={tc} className="flex items-center justify-between px-4 py-3.5">
-        <div>
-          <div className="text-[9px] font-bold tracking-[0.18em] text-black/25 dark:text-white/25">{t.systemMonitor}</div>
-          <div className="flex items-center gap-2 mt-0.5">
-            <span className={cn('text-[20px] font-extrabold tracking-tight', tc ? '' : 'text-[#1a1a1a] dark:text-[#e8e8ea]')}>
-              JARVIS <span className="text-[13px] font-normal text-black/20 dark:text-white/20">v3.2</span>
-            </span>
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={settings.perfMode}
-                initial={{ opacity: 0, x: -8, scale: 0.85 }}
-                animate={{ opacity: 1, x: 0,  scale: 1 }}
-                exit={{ opacity: 0, x: -8, scale: 0.85 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-                className={cn(
-                  'flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold',
-                  settings.perfMode === 'eco'    && 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
-                  settings.perfMode === 'normal' && 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
-                  settings.perfMode === 'turbo'  && 'bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 animate-pulse2',
-                )}
-              >
-                <span>{perfCfg.icon}</span>
-                <span>{perfCfg.label}</span>
-              </motion.div>
-            </AnimatePresence>
+        {/* ═══ HEADER ═══ */}
+        <div style={cardStyle()} className={cn(cardCls,'flex items-center justify-between px-4 py-3.5')}>
+          <div>
+            <div className="text-[9px] font-bold tracking-[0.18em]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{t.systemMonitor}</span></div>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[20px] font-extrabold tracking-tight" style={tc?{color:tc.textPrimary}:{}}>
+                <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>JARVIS</span>
+                <span className="text-[13px] font-normal ml-1" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>v3.2</span></span>
+              </span>
+              <AnimatePresence mode="wait">
+                <motion.div key={settings.perfMode}
+                  initial={{opacity:0,x:-8,scale:0.85}} animate={{opacity:1,x:0,scale:1}} exit={{opacity:0,x:-8,scale:0.85}}
+                  transition={{type:'spring',stiffness:400,damping:20}}
+                  className={cn('flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold',
+                    !tc && settings.perfMode==='eco'    && 'bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400',
+                    !tc && settings.perfMode==='normal' && 'bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400',
+                    !tc && settings.perfMode==='turbo'  && 'bg-red-50 dark:bg-red-900/20 text-red-500 dark:text-red-400 animate-pulse2',
+                  )}
+                  style={tc?{background:'rgba(255,255,255,0.10)',color:tc.accent}:{}}>
+                  <span>{perfCfg.icon}</span><span>{perfCfg.label}</span>
+                </motion.div>
+              </AnimatePresence>
+            </div>
           </div>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          {/* Clickable clock → world clock */}
-          <button
-            className="text-[13px] font-bold font-mono tabular-nums no-drag hover:opacity-70 transition-opacity flex items-center gap-1"
-            style={{ color: tc ? tc.textPrimary : undefined }}
-            onClick={() => setModal('worldclock')}
-          >
-            <Clock size={10} className="opacity-40" />
-            <span className={tc ? '' : 'text-[#1a1a1a] dark:text-[#e8e8ea]'}>{clock}</span>
-          </button>
-          <div className="text-[10px] text-black/30 dark:text-white/30">⏱ {fmtUptime(sys.uptime_secs)}</div>
-          <div className="text-[10px] text-black/30 dark:text-white/30">🌤 {weather}</div>
-          <div className="flex gap-1 no-drag mt-0.5">
-            <button onClick={() => getWin().then(w => w.minimize())} className="w-5 h-5 rounded-full bg-black/05 dark:bg-white/08 flex items-center justify-center text-black/30 dark:text-white/30 hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
-              <Minus size={8} />
+          <div className="flex flex-col items-end gap-1.5">
+            <button className="text-[13px] font-bold font-mono tabular-nums no-drag hover:opacity-70 transition-opacity flex items-center gap-1"
+              style={tc?{color:tc.textPrimary}:{}} onClick={()=>setModal('worldclock')}>
+              <Clock size={10} className={!tc?'text-black/30 dark:text-white/30 opacity-60':''} style={tc?{color:tc.textMuted}:{}}/>
+              <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{clock}</span>
             </button>
-            <button onClick={() => getWin().then(w => w.isMaximized().then(m => m ? w.unmaximize() : w.maximize()))} className="w-5 h-5 rounded-full bg-black/05 dark:bg-white/08 flex items-center justify-center text-black/30 dark:text-white/30 hover:bg-black/10 dark:hover:bg-white/15 transition-colors">
-              <Maximize2 size={8} />
-            </button>
-            <button onClick={() => getWin().then(w => w.close())} className="w-5 h-5 rounded-full bg-black/05 dark:bg-white/08 flex items-center justify-center text-black/30 dark:text-white/30 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500 transition-colors">
-              <X size={8} />
-            </button>
+            <div className="text-[10px]" style={muted()}><span className={!tc?'text-black/30 dark:text-white/30':''}>⏱ {fmtUptime(sys.uptime_secs)}</span></div>
+            <div className="text-[10px]" style={muted()}><span className={!tc?'text-black/30 dark:text-white/30':''}>🌤 {weather}</span></div>
+            <div className="flex gap-1 no-drag mt-0.5">
+              {[
+                {icon:<Minus size={8}/>, action:()=>getWin().then(w=>w.minimize())},
+                {icon:<Maximize2 size={8}/>, action:()=>getWin().then(w=>w.isMaximized().then(m=>m?w.unmaximize():w.maximize()))},
+                {icon:<X size={8}/>, action:()=>getWin().then(w=>w.close()), close:true},
+              ].map((btn,i)=>(
+                <button key={i} onClick={btn.action}
+                  className={cn('w-5 h-5 rounded-full flex items-center justify-center transition-colors',
+                    btn.close ? 'bg-black/05 dark:bg-white/08 text-black/30 dark:text-white/30 hover:bg-red-100 dark:hover:bg-red-900/30 hover:text-red-500'
+                              : 'bg-black/05 dark:bg-white/08 text-black/30 dark:text-white/30 hover:bg-black/10 dark:hover:bg-white/15')}
+                  style={tc?{background:'rgba(255,255,255,0.08)',color:tc.textMuted}:{}}>{btn.icon}</button>
+              ))}
+            </div>
           </div>
         </div>
-      </Card>
 
-      {isDemo && (
-        <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2 text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center">
-          {t.demoMode}
+        {isDemo && <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/40 rounded-xl px-3 py-2 text-[10px] font-bold text-amber-700 dark:text-amber-400 text-center">{t.demoMode}</div>}
+        {tc && <div className="rounded-xl px-3 py-2 text-[10px] font-bold text-center border" style={{background:tc.bannerBg,borderColor:tc.bannerBorder,color:tc.bannerText}}>{tc.banner}</div>}
+
+        {/* ═══ CPU + RAM ═══ */}
+        <div className="grid grid-cols-2 gap-2">
+          <MetricCard label="CPU" value={`${Math.round(sys.cpu_percent)}%`} sub={`${fmtTemp(sys.cpu_temp)} · load`} color="#3b82f6" history={cpuHist} onClick={()=>openChart('cpu')} tc={tc} />
+          <MetricCard label="RAM" value={`${Math.round(sys.ram_percent)}%`} sub={`${sys.ram_used_gb.toFixed(1)} / ${sys.ram_total_gb.toFixed(1)} GB`} color="#8b5cf6" history={ramHist} onClick={()=>openChart('ram')} tc={tc} />
         </div>
-      )}
 
-      {/* Artist theme banner */}
-      {tc && (
-        <div style={{ background:tc.bannerBg, borderColor:tc.bannerBorder, color:tc.bannerText }}
-          className="rounded-xl px-3 py-2 text-[10px] font-bold text-center border">
-          {tc.banner}
+        {/* ═══ GPU + NETWORK ═══ */}
+        <div className="grid grid-cols-2 gap-2">
+          <MetricCard label="GPU" value={`${Math.round(0)}%`} sub={fmtTemp(sys.gpu_temp)} color="#f59e0b" history={gpuHist} onClick={()=>openChart('gpu')} tc={tc} />
+          <MetricCard label="NETWORK" value={fmtSpeed(net.dlSpeed)} sub={`↑ ${fmtSpeed(net.ulSpeed)}`} color="#10b981" history={netHist} onClick={()=>openChart('net')} tc={tc} />
         </div>
-      )}
 
-      {/* ═══ CPU + RAM ═══ */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <MetricCard label="CPU" value={`${Math.round(sys.cpu_percent)}%`} sub={`${fmtTemp(sys.cpu_temp)} · load`} color="#3b82f6" history={cpuHist} onClick={() => openChart('cpu')} tc={tc} />
-        <MetricCard label="RAM" value={`${Math.round(sys.ram_percent)}%`} sub={`${sys.ram_used_gb.toFixed(1)} / ${sys.ram_total_gb.toFixed(1)} GB`} color="#8b5cf6" history={ramHist} onClick={() => openChart('ram')} tc={tc} />
-      </div>
-
-      {/* ═══ GPU + NETWORK ═══ */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <MetricCard label="GPU" value={`${Math.round(0)}%`} sub={fmtTemp(sys.gpu_temp)} color="#f59e0b" history={gpuHist} onClick={() => openChart('gpu')} tc={tc} />
-        <MetricCard label="NETWORK" value={fmtSpeed(net.dlSpeed)} sub={`↑ ${fmtSpeed(net.ulSpeed)}`} color="#10b981" history={netHist} onClick={() => openChart('net')} tc={tc} />
-      </div>
-
-      {/* ═══ DISK + NOW PLAYING ═══ */}
-      <div className="grid grid-cols-2 gap-2.5">
-        <MetricCard
-          label="DISK"
-          value={`${Math.round(sys.disk_percent)}%`}
-          sub={`${sys.disk_free_gb.toFixed(0)} GB ${t.free}`}
-          color="#6b7280"
-          history={Array(60).fill(sys.disk_percent)}
-          onClick={() => openChart('disk')}
-          tc={tc}
-        >
-          <div className="h-[3px] bg-black/[0.06] dark:bg-white/[0.08] rounded-full overflow-hidden mt-1">
-            <div className="h-full bg-[#6b7280] rounded-full transition-all duration-500" style={{ width: `${sys.disk_percent}%` }} />
+        {/* ═══ DISK + NOW PLAYING ═══ */}
+        <div className="grid grid-cols-2 gap-2">
+          <MetricCard label="DISK" value={`${Math.round(sys.disk_percent)}%`} sub={`${sys.disk_free_gb.toFixed(0)} GB ${t.free}`} color="#6b7280" history={Array(60).fill(sys.disk_percent)} onClick={()=>openChart('disk')} tc={tc}>
+            <div className="h-[3px] rounded-full overflow-hidden mt-1" style={{background:tc?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.06)'}}>
+              <div className="h-full rounded-full transition-all duration-500" style={{width:`${sys.disk_percent}%`,background:tc?tc.sparkline:'#6b7280'}} />
+            </div>
+          </MetricCard>
+          <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('spotify')}>
+            <div className="text-[9px] font-bold tracking-[0.12em]" style={{color:tc?tc.nowPlayingColor:'#1DB954'}}>{t.nowPlaying}</div>
+            <div className="text-[14px] font-bold truncate" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{settings.perfMode==='eco'?t.ecoNoSpotify:(spotify.playing?spotify.track:t.notPlaying)}</span></div>
+            {spotify.artist&&settings.perfMode!=='eco'&&<div className="text-[10px] truncate" style={muted()}><span className={!tc?'text-black/30 dark:text-white/30':''}>{spotify.artist}</span></div>}
+            <div className="absolute top-3 right-3 text-[10px] font-bold" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>↗</span></div>
+            <div className="flex items-end gap-[2px] h-5 mt-auto">
+              {Array(12).fill(0).map((_,i)=>(
+                <div key={i} className="flex-1 rounded-[2px_2px_0_0]"
+                  style={{background:tc?tc.nowPlayingColor:'#1DB954',height:(spotify.playing&&settings.perfMode!=='eco')?`${4+Math.random()*14}px`:'3px',opacity:0.6,transition:'height 0.3s'}} />
+              ))}
+            </div>
           </div>
-        </MetricCard>
+        </div>
 
-        <Card clickable hover onClick={() => setModal('spotify')} tc={tc} className="relative flex flex-col gap-1.5">
-          <div className="text-[9px] font-bold tracking-[0.12em]" style={{ color: tc ? tc.nowPlayingColor : '#1DB954' }}>{t.nowPlaying}</div>
-          <div className={cn('text-[14px] font-bold truncate', tc ? '' : 'text-[#1a1a1a] dark:text-[#e8e8ea]')}>
-            {settings.perfMode === 'eco' ? t.ecoNoSpotify : (spotify.playing ? spotify.track : t.notPlaying)}
+        {/* ═══ SYSTEM + TOP PROCESSES ═══ */}
+        <div className="grid grid-cols-2 gap-2">
+          <div style={cardStyle()} className={cardCls}>
+            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.system}</span></div>
+            <div className="flex flex-col gap-1.5">
+              {[['CPU',sysInfo.cpu_name.length>20?sysInfo.cpu_name.slice(0,20)+'…':sysInfo.cpu_name],['Cores',sysInfo.cpu_cores>0?String(sysInfo.cpu_cores):'...'],['RAM',sysInfo.ram_total_gb>0?`${sysInfo.ram_total_gb.toFixed(0)} GB`:'...'],['OS',`${sysInfo.os_name} ${sysInfo.os_version}`.trim()],['Host',sysInfo.hostname]].map(([k,v])=>(
+                <div key={k} className="flex justify-between border-b pb-1.5 last:border-0 last:pb-0" style={tc?{borderColor:'rgba(255,255,255,0.05)'}:{borderColor:'rgba(0,0,0,0.04)'}}>
+                  <span className="text-[9px] font-bold tracking-[0.1em]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{k}</span></span>
+                  <span className="text-[10px] font-semibold max-w-[110px] truncate text-right" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{v}</span></span>
+                </div>
+              ))}
+            </div>
           </div>
-          {spotify.artist && settings.perfMode !== 'eco' && <div className="text-[10px] text-black/30 dark:text-white/30 truncate">{spotify.artist}</div>}
-          <div className="absolute top-3 right-3 text-[10px] font-bold text-black/20 dark:text-white/20">↗</div>
-          <div className="flex items-end gap-[2px] h-5 mt-auto">
-            {Array(12).fill(0).map((_, i) => (
-              <div key={i} className="flex-1 rounded-[2px_2px_0_0]"
-                style={{ background: tc ? tc.sparkline : '#1DB954', height: (spotify.playing && settings.perfMode !== 'eco') ? `${4 + Math.random() * 14}px` : '3px', opacity: 0.6, transition: 'height 0.3s' }}
-              />
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* ═══ SYSTEM INFO + TOP PROCESSES ═══ */}
-      <div className="grid grid-cols-2 gap-2.5">
-        {/* System Info */}
-        <Card tc={tc} className="p-3.5">
-          <SectionLabel color={tc ? tc.accent : undefined}>{t.system}</SectionLabel>
-          <div className="flex flex-col gap-1.5">
-            {[
-              ['CPU',   sysInfo.cpu_name.length > 20 ? sysInfo.cpu_name.slice(0,20)+'…' : sysInfo.cpu_name],
-              ['Cores', sysInfo.cpu_cores > 0 ? String(sysInfo.cpu_cores) : '...'],
-              ['RAM',   sysInfo.ram_total_gb > 0 ? `${sysInfo.ram_total_gb.toFixed(0)} GB` : '...'],
-              ['OS',    `${sysInfo.os_name} ${sysInfo.os_version}`.trim()],
-              ['Host',  sysInfo.hostname],
-            ].map(([k, v]) => (
-              <div key={k} className="flex justify-between border-b border-black/[0.04] dark:border-white/[0.04] pb-1.5 last:border-0 last:pb-0">
-                <span className="text-[9px] font-bold tracking-[0.1em] text-black/25 dark:text-white/25">{k}</span>
-                <span className="text-[10px] font-semibold max-w-[110px] truncate text-right" style={{ color: tc ? tc.textMuted : undefined }}>{v}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        {/* Top Processes */}
-        <Card tc={tc} className="p-3.5">
-          <SectionLabel color={tc ? tc.accent : undefined}>{t.topProcesses}</SectionLabel>
-          <div className="flex flex-col gap-1.5">
-            {procs.length === 0
-              ? <div className="text-[10px] text-black/20 dark:text-white/20 py-2">No data</div>
-              : procs.slice(0,4).map(p => (
-                <div key={p.pid} className="flex items-center gap-2 border-b border-black/[0.04] dark:border-white/[0.04] pb-1.5 last:border-0 last:pb-0">
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-semibold truncate" style={{ color: tc ? tc.textMuted : undefined }}>{p.name}</div>
-                    <div className="h-[2px] bg-black/[0.05] dark:bg-white/[0.08] rounded-full mt-0.5 overflow-hidden">
-                      <div className="h-full bg-blue-400 rounded-full transition-all duration-300" style={{ width: `${Math.min(100, p.cpu_percent)}%` }} />
+          <div style={cardStyle()} className={cardCls}>
+            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.topProcesses}</span></div>
+            <div className="flex flex-col gap-1.5">
+              {procs.length===0
+                ? <div className="text-[10px] py-2" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>No data</span></div>
+                : procs.slice(0,5).map(p=>(
+                  <div key={p.pid} className="flex items-center gap-2 border-b pb-1.5 last:border-0 last:pb-0" style={tc?{borderColor:'rgba(255,255,255,0.05)'}:{borderColor:'rgba(0,0,0,0.04)'}}>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[10px] font-semibold truncate" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{p.name}</span></div>
+                      <div className="h-[2px] rounded-full mt-0.5 overflow-hidden" style={{background:tc?'rgba(255,255,255,0.08)':'rgba(0,0,0,0.05)'}}>
+                        <div className="h-full rounded-full transition-all duration-300" style={{width:`${Math.min(100,p.cpu_percent)}%`,background:tc?tc.sparkline:'#3b82f6'}} />
+                      </div>
                     </div>
+                    <span className="text-[9px] font-mono flex-shrink-0" style={muted()}><span className={!tc?'text-black/30 dark:text-white/30':''}>{p.cpu_percent.toFixed(1)}%</span></span>
                   </div>
-                  <span className="text-[9px] font-mono text-black/30 dark:text-white/30 flex-shrink-0">{p.cpu_percent.toFixed(1)}%</span>
-                </div>
-              ))
-            }
-          </div>
-        </Card>
-      </div>
-
-      {/* ═══ NOTES preview ═══ */}
-      <Card clickable hover onClick={() => setModal('notes')} tc={tc} className="relative flex flex-col gap-1.5">
-        <div className="flex items-center justify-between">
-          <SectionLabel className="mb-0" color={tc ? tc.accent : undefined}>{t.notes}</SectionLabel>
-          <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-black/[0.05] dark:bg-white/[0.08] text-black/30 dark:text-white/30">{notes.length}</span>
-        </div>
-        {notes.length === 0
-          ? <div className="text-[11px] flex-1 flex items-center" style={{ color: tc ? tc.textMuted : undefined }}>{t.notesAdd}</div>
-          : <div className="flex flex-col gap-1 flex-1">
-              {notes.slice(0,3).map(n => (
-                <div key={n.id} className="flex items-center gap-1.5">
-                  <div className="w-1 h-1 rounded-full bg-blue-400 flex-shrink-0" />
-                  <span className="text-[10px] text-[#555] dark:text-[#999] truncate">{n.text.length > 30 ? n.text.slice(0,30)+'…' : n.text}</span>
-                </div>
-              ))}
-              {notes.length > 3 && <div className="text-[9px] text-black/20 dark:text-white/20 pl-2.5">{t.notesMore(notes.length - 3)}</div>}
+                ))
+              }
             </div>
-        }
-        <div className="text-[9px] mt-auto" style={{ color: tc ? tc.textMuted : undefined }}>{t.noteAddBtn}</div>
-        <div className="absolute top-3 right-3 text-[10px] font-bold text-black/20 dark:text-white/20">↗</div>
-      </Card>
-
-      {/* ═══ BUTTONS ═══ */}
-      <div className="grid grid-cols-4 gap-2 no-drag">
-        {[
-          { icon: <Settings size={14} />, label: t.settings,  action: () => setModal('settings') },
-          { icon: <BarChart2 size={14} />, label: t.changelog, action: () => setModal('changelog') },
-          { icon: <Image size={14} />,    label: t.imageTools, action: () => setModal('imagetools') },
-          { icon: <Crown size={14} />,    label: t.premium,    action: () => setModal('premium'), gold: true },
-        ].map(({ icon, label, action, gold }) => (
-          <button
-            key={label}
-            onClick={action}
-            className={cn(
-              'flex flex-col items-center gap-1 py-2.5 rounded-2xl text-[9px] font-bold tracking-[0.05em] transition-all duration-150 border',
-              gold
-                ? 'bg-gradient-to-b from-amber-400 to-orange-500 text-white border-amber-300 hover:opacity-90'
-                : tc
-                ? 'hover:opacity-80'
-                : 'bg-white dark:bg-[#1c1c1e] text-black/40 dark:text-white/40 border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
-            )}
-          >
-            {icon}{label}
-          </button>
-        ))}
-      </div>
-
-      {/* ═══ ACTIONS button (separate, theme-correct) ═══ */}
-      <button
-        onClick={() => setModal('actions')}
-        className={cn(
-          'w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[11px] font-bold tracking-[0.06em] transition-all duration-150 border no-drag',
-          tc ? '' : 'bg-white dark:bg-[#1c1c1e] text-black/50 dark:text-white/50 border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
-        )}
-      >
-        <Zap size={14} />
-        {t.actions}
-      </button>
-
-      </div>{/* end relative content */}
-
-      {/* ═══ MODALS ═══ */}
-      <ChartModal open={modal === 'chart'} onClose={() => setModal(null)} chartKey={chartKey} sys={sys} net={net} sysInfo={sysInfo} cpuHist={cpuHist} ramHist={ramHist} gpuHist={gpuHist} netHist={netHist} />
-      <SpotifyPanel open={modal === 'spotify'} onClose={() => setModal(null)} spotify={spotify} t={t} isEco={settings.perfMode === 'eco'} />
-
-      {/* Settings */}
-      <Modal open={modal === 'settings'} onClose={() => setModal(null)} title="SETTINGS">
-        <div className="flex flex-col gap-0 divide-y divide-black/[0.05] dark:divide-white/[0.06]">
-          {/* Theme */}
-          <div className="flex items-center justify-between py-3">
-            <span className="text-[12px] text-[#555] dark:text-[#aaa]">{t.theme}</span>
-            <div className="flex gap-1 no-drag">
-              {(['false','true'] as const).map((v, i) => (
-                <button key={v} onClick={() => updateSettings({ darkTheme: i === 1 })}
-                  className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
-                    settings.darkTheme === (i === 1) ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'
-                  )}>{i === 0 ? t.light : t.dark}</button>
-              ))}
-            </div>
-          </div>
-          {/* Language */}
-          <div className="flex items-center justify-between py-3">
-            <span className="text-[12px] text-[#555] dark:text-[#aaa]">{t.language}</span>
-            <div className="flex gap-1 no-drag">
-              {(['en','tr','es'] as Language[]).map(l => (
-                <button key={l} onClick={() => updateSettings({ language: l })}
-                  className={cn('px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
-                    settings.language === l ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'
-                  )}>{{ en: '🇬🇧 EN', tr: '🇹🇷 TR', es: '🇪🇸 ES' }[l]}</button>
-              ))}
-            </div>
-          </div>
-          {/* Always on top */}
-          <div className="flex items-center justify-between py-3">
-            <span className="text-[12px] text-[#555] dark:text-[#aaa]">{t.alwaysOnTop}</span>
-            <div className="flex gap-1 no-drag">
-              {[true, false].map((v) => (
-                <button key={String(v)} onClick={async () => {
-                  updateSettings({ alwaysOnTop: v });
-                  try { (await getWin()).setAlwaysOnTop(v); } catch {}
-                }}
-                  className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
-                    settings.alwaysOnTop === v ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'
-                  )}>{v ? t.on : t.off}</button>
-              ))}
-            </div>
-          </div>
-          {/* Start with Windows */}
-          <div className="flex items-center justify-between py-3">
-            <span className="text-[12px] text-[#555] dark:text-[#aaa]">{t.startWithWindows}</span>
-            <div className="flex gap-1 no-drag">
-              {[true, false].map((v) => (
-                <button key={String(v)} onClick={() => updateSettings({ startWithWindows: v })}
-                  className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
-                    settings.startWithWindows === v ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'
-                  )}>{v ? t.on : t.off}</button>
-              ))}
-            </div>
-          </div>
-          {/* Perf mode */}
-          <div className="flex items-center justify-between py-3">
-            <span className="text-[12px] text-[#555] dark:text-[#aaa]">{t.performance}</span>
-            <div className="flex gap-1 no-drag">
-              {(['eco','normal','turbo'] as PerfMode[]).map(m => (
-                <button key={m} onClick={() => updateSettings({ perfMode: m })}
-                  className={cn('px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
-                    settings.perfMode === m ? 'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]' : 'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'
-                  )}>{PERF_CONFIG[m].icon} {PERF_CONFIG[m].label}</button>
-              ))}
-            </div>
-          </div>
-          {/* Perf info */}
-          <div className="pt-3 text-[10px] text-black/30 dark:text-white/30 bg-black/[0.02] dark:bg-white/[0.03] rounded-xl px-3 py-2.5">
-            {{ eco: t.perfEcoInfo, normal: t.perfNormalInfo, turbo: t.perfTurboInfo }[settings.perfMode]}
-          </div>
-          {/* Re-tour button */}
-          <div className="pt-3">
-            <button onClick={() => { setModal(null); setShowTour(true); }} className="w-full py-2 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-[11px] font-semibold text-blue-500 hover:bg-blue-100 transition-colors">
-              🗺 {settings.language === 'tr' ? 'Özellik turunu tekrar göster' : settings.language === 'es' ? 'Repetir tour de funciones' : 'Show feature tour again'}
-            </button>
           </div>
         </div>
-        <button onClick={() => setModal(null)} className="mt-4 w-full py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">{t.close}</button>
-      </Modal>
 
-      {/* Notes + Timer */}
-      <NotesModal open={modal === 'notes'} onClose={() => setModal(null)} t={t} notes={notes} addNote={addNote} removeNote={removeNote} updateNote={updateNote} />
-
-      {/* Actions — Task Manager removed */}
-      <Modal open={modal === 'actions'} onClose={() => setModal(null)} title={t.quickActions}>
-        <div className="flex flex-col gap-2">
-          {[
-            { label: t.restart,  cmd: 'restart' },
-            { label: t.shutdown, cmd: 'shutdown' },
-            { label: t.sleep,    cmd: 'sleep' },
-          ].map(({ label, cmd }) => (
-            <button key={cmd} onClick={async () => {
-              const confirm2 = cmd === 'restart' ? t.confirmRestart : cmd === 'shutdown' ? t.confirmShutdown : null;
-              if (confirm2 && !confirm(confirm2)) return;
-              const { invoke } = await import('@tauri-apps/api/core');
-              invoke('system_action', { action: cmd }).catch(()=>{});
-            }}
-              className="px-4 py-3 rounded-xl bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.06] text-[12px] font-semibold text-[#333] dark:text-[#ccc] text-left hover:bg-black/[0.06] dark:hover:bg-white/[0.08] transition-colors">
-              {label}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => setModal(null)} className="mt-3 w-full py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-[12px] font-semibold text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">✕ {t.close}</button>
-      </Modal>
-
-      {/* Changelog */}
-      <Modal open={modal === 'changelog'} onClose={() => setModal(null)} title="CHANGELOG">
-        <div className="flex flex-col gap-4 overflow-y-auto max-h-[420px]">
-          {[
-            { ver: 'v3.2.0', date: 'Current', items: [
-              { type: 'add', text: 'Language support: English, Turkish, Spanish — saved to settings' },
-              { type: 'add', text: 'World Clock — click the header clock to see time in any city' },
-              { type: 'add', text: 'Image Tools panel — grayscale, invert, sepia, blur, brightness, contrast' },
-              { type: 'add', text: 'Premium section with Discord contact info' },
-              { type: 'add', text: 'First-run feature tour (step-by-step guide)' },
-              { type: 'add', text: 'Notes panel expanded with integrated Timer (count-up & countdown)' },
-              { type: 'add', text: 'Artist themes: Madison Beer 💜 and Simge / İcardi 💙' },
-              { type: 'add', text: 'Top Processes restored to System section' },
-              { type: 'add', text: 'Start with Windows setting' },
-              { type: 'fix', text: 'Eco mode now shows "Spotify tracking paused" instead of freezing last track' },
-              { type: 'fix', text: 'Actions button now matches card theme (no longer inverted)' },
-              { type: 'fix', text: 'Performance mode labels are now lowercase (eco / normal / turbo)' },
-              { type: 'rem', text: 'Removed broken Task Manager button from Actions' },
-            ]},
-            { ver: 'v3.1.0', date: '', items: [
-              { type: 'add', text: 'Migrated from Svelte to React + TypeScript + Tailwind CSS' },
-              { type: 'add', text: 'Added Framer Motion animations throughout the UI' },
-              { type: 'imp', text: 'Cleaner component architecture with custom hooks' },
-            ]},
-            { ver: 'v3.0.0', date: 'Initial release', items: [
-              { type: 'add', text: 'Full rewrite from Python/PyQt6 to Tauri + React + Rust' },
-              { type: 'add', text: 'White theme with big number metric cards' },
-              { type: 'add', text: 'Spotify integration with animated visualizer' },
-            ]},
-          ].map(({ ver, date, items }) => (
-            <div key={ver}>
-              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-black/[0.05] dark:border-white/[0.06]">
-                <span className="text-[13px] font-extrabold text-[#1a1a1a] dark:text-[#e8e8ea]">{ver}</span>
-                {date && <span className="text-[10px] text-black/25 dark:text-white/25">{date}</span>}
-              </div>
-              <div className="flex flex-col gap-1">
-                {items.map((item, i) => (
-                  <div key={i} className="flex items-start gap-2">
-                    <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0',
-                      item.type === 'add' && 'bg-green-400',
-                      item.type === 'fix' && 'bg-blue-400',
-                      item.type === 'imp' && 'bg-amber-400',
-                      item.type === 'rem' && 'bg-red-400',
-                    )} />
-                    <span className="text-[11px] text-[#555] dark:text-[#888]">{item.text}</span>
+        {/* ═══ NOTES preview ═══ */}
+        <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('notes')}>
+          <div className="flex items-center justify-between">
+            <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.notes}</span></div>
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={tc?{background:'rgba(255,255,255,0.08)',color:tc.textMuted}:{background:'rgba(0,0,0,0.05)',color:'rgba(0,0,0,0.3)'}}>{notes.length}</span>
+          </div>
+          {notes.length===0
+            ? <div className="text-[11px] flex-1 flex items-center" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesAdd}</span></div>
+            : <div className="flex flex-col gap-1 flex-1">
+                {notes.slice(0,3).map(n=>(
+                  <div key={n.id} className="flex items-center gap-1.5">
+                    <div className="w-1 h-1 rounded-full flex-shrink-0" style={{background:tc?tc.accent:'#60a5fa'}} />
+                    <span className="text-[10px] truncate" style={muted()}><span className={!tc?'text-[#555] dark:text-[#999]':''}>{n.text.length>30?n.text.slice(0,30)+'…':n.text}</span></span>
                   </div>
                 ))}
+                {notes.length>3&&<div className="text-[9px] pl-2.5" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesMore(notes.length-3)}</span></div>}
               </div>
-            </div>
+          }
+          <div className="text-[9px] mt-auto" style={muted()}><span className={!tc?'text-black/15 dark:text-white/15':''}>{t.noteAddBtn}</span></div>
+          <div className="absolute top-3 right-3 text-[10px] font-bold" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>↗</span></div>
+        </div>
+
+        {/* ═══ BOTTOM BUTTONS ═══ */}
+        <div className="grid grid-cols-4 gap-2 no-drag">
+          {[
+            {icon:<Settings size={14}/>,  label:t.settings,  action:()=>setModal('settings')},
+            {icon:<BarChart2 size={14}/>, label:t.changelog, action:()=>setModal('changelog')},
+            {icon:<Image size={14}/>,     label:t.imageTools, action:()=>setModal('imagetools')},
+            {icon:<Crown size={14}/>,     label:t.premium,    action:()=>setModal('premium'), gold:true},
+          ].map(({icon,label,action,gold})=>(
+            <button key={label} onClick={action}
+              style={!gold&&tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted}:undefined}
+              className={cn(btnBase,
+                gold ? 'bg-gradient-to-b from-amber-400 to-orange-500 text-white border-amber-300 hover:opacity-90'
+                     : !tc ? 'bg-white dark:bg-[#1c1c1e] text-black/40 dark:text-white/40 border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]'
+                           : 'hover:opacity-80')}>
+              {icon}{label}
+            </button>
           ))}
         </div>
-        <button onClick={() => setModal(null)} className="mt-4 w-full py-2.5 rounded-xl bg-black/[0.04] dark:bg-white/[0.06] text-[12px] font-semibold text-black/40 dark:text-white/40 hover:bg-black/[0.07] transition-colors">{t.close}</button>
-      </Modal>
+        <button onClick={()=>setModal('actions')}
+          style={tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textPrimary}:undefined}
+          className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[11px] font-bold tracking-[0.06em] transition-all duration-150 border no-drag',
+            !tc&&'bg-white dark:bg-[#1c1c1e] text-black/50 dark:text-white/50 border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]',
+            tc&&'hover:opacity-80')}>
+          <Zap size={14}/>{t.actions}
+        </button>
 
-      {/* World Clock */}
-      <WorldClockModal open={modal === 'worldclock'} onClose={() => setModal(null)} t={t} />
+        {/* ═══ MODALS ═══ */}
+        <ChartModal open={modal==='chart'} onClose={()=>setModal(null)} chartKey={chartKey} sys={sys} net={net} sysInfo={sysInfo} cpuHist={cpuHist} ramHist={ramHist} gpuHist={gpuHist} netHist={netHist} />
+        <SpotifyPanel open={modal==='spotify'} onClose={()=>setModal(null)} spotify={spotify} t={t} isEco={settings.perfMode==='eco'} tc={tc} />
 
-      {/* Image Tools */}
-      <ImageToolsModal open={modal === 'imagetools'} onClose={() => setModal(null)} dark={settings.darkTheme} />
+        {/* Settings */}
+        <Modal open={modal==='settings'} onClose={()=>setModal(null)} title="SETTINGS" tc={tc}>
+          <div className="flex flex-col gap-0 divide-y" style={tc?{borderColor:'rgba(255,255,255,0.06)'}:{}}>
+            {[
+              {label:t.theme, ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {(['false','true'] as const).map((v,i)=>(
+                    <button key={v} onClick={()=>updateSettings({darkTheme:i===1})}
+                      style={settings.darkTheme===(i===1)&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        !tc&&(settings.darkTheme===(i===1)?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {i===0?t.light:t.dark}
+                    </button>
+                  ))}
+                </div>
+              )},
+              {label:t.language, ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {(['en','tr','es'] as Language[]).map(l=>(
+                    <button key={l} onClick={()=>updateSettings({language:l})}
+                      style={settings.language===l&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        !tc&&(settings.language===l?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {{'en':'🇬🇧 EN','tr':'🇹🇷 TR','es':'🇪🇸 ES'}[l]}
+                    </button>
+                  ))}
+                </div>
+              )},
+              {label:t.alwaysOnTop, ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {[true,false].map(v=>(
+                    <button key={String(v)} onClick={async()=>{updateSettings({alwaysOnTop:v});try{(await getWin()).setAlwaysOnTop(v);}catch{}}}
+                      style={settings.alwaysOnTop===v&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        !tc&&(settings.alwaysOnTop===v?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {v?t.on:t.off}
+                    </button>
+                  ))}
+                </div>
+              )},
+              {label:t.startWithWindows, ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {[true,false].map(v=>(
+                    <button key={String(v)} onClick={()=>updateSettings({startWithWindows:v})}
+                      style={settings.startWithWindows===v&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        !tc&&(settings.startWithWindows===v?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {v?t.on:t.off}
+                    </button>
+                  ))}
+                </div>
+              )},
+              {label:t.performance, ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {(['eco','normal','turbo'] as PerfMode[]).map(m=>(
+                    <button key={m} onClick={()=>updateSettings({perfMode:m})}
+                      style={settings.perfMode===m&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
+                        !tc&&(settings.perfMode===m?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {PERF_CONFIG[m].icon} {PERF_CONFIG[m].label}
+                    </button>
+                  ))}
+                </div>
+              )},
+            ].map(row=>(
+              <div key={row.label} className={cn('flex items-center justify-between py-3',!tc&&'divide-black/[0.05] dark:divide-white/[0.06]')}>
+                <span className="text-[12px]" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#555] dark:text-[#aaa]':''}>{row.label}</span></span>
+                {row.ctrl}
+              </div>
+            ))}
+            <div className="pt-3 text-[10px] rounded-xl px-3 py-2.5" style={tc?{background:'rgba(255,255,255,0.05)',color:tc.textMuted}:{background:'rgba(0,0,0,0.02)',color:'rgba(0,0,0,0.3)'}}>
+              {{'eco':t.perfEcoInfo,'normal':t.perfNormalInfo,'turbo':t.perfTurboInfo}[settings.perfMode]}
+            </div>
+            <div className="pt-3">
+              <button onClick={()=>{setModal(null);setShowTour(true);}} className="w-full py-2 rounded-xl text-[11px] font-semibold bg-blue-50 dark:bg-blue-900/20 text-blue-500 hover:bg-blue-100 transition-colors">
+                🗺 {settings.language==='tr'?'Özellik turunu tekrar göster':settings.language==='es'?'Repetir tour de funciones':'Show feature tour again'}
+              </button>
+            </div>
+          </div>
+          <button onClick={()=>setModal(null)} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+            className={cn('mt-4 w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+            {t.close}
+          </button>
+        </Modal>
 
-      {/* Premium */}
-      <PremiumModal open={modal === 'premium'} onClose={() => setModal(null)} t={t} />
+        {/* Notes + Timer */}
+        <NotesModal open={modal==='notes'} onClose={()=>setModal(null)} t={t} tc={tc} notes={notes} addNote={addNote} removeNote={removeNote} updateNote={updateNote} />
 
-      {/* First-run Tour */}
-      <TourModal open={showTour} onClose={closeTour} t={t} />
+        {/* Actions */}
+        <Modal open={modal==='actions'} onClose={()=>setModal(null)} title={t.quickActions} tc={tc}>
+          <div className="flex flex-col gap-2">
+            {[{label:t.restart,cmd:'restart'},{label:t.shutdown,cmd:'shutdown'},{label:t.sleep,cmd:'sleep'}].map(({label,cmd})=>(
+              <button key={cmd} onClick={async()=>{
+                const confirmMsg = cmd==='restart'?t.confirmRestart:cmd==='shutdown'?t.confirmShutdown:null;
+                if(confirmMsg&&!confirm(confirmMsg)) return;
+                const {invoke}=await import('@tauri-apps/api/core'); invoke('system_action',{action:cmd}).catch(()=>{});
+              }}
+                style={tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textPrimary}:undefined}
+                className={cn('px-4 py-3 rounded-xl border text-[12px] font-semibold text-left transition-colors',
+                  !tc&&'bg-black/[0.03] dark:bg-white/[0.04] border-black/[0.05] dark:border-white/[0.06] text-[#333] dark:text-[#ccc] hover:bg-black/[0.06] dark:hover:bg-white/[0.08]',
+                  tc&&'hover:opacity-80')}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <button onClick={()=>setModal(null)} className="mt-3 w-full py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 text-[12px] font-semibold text-red-400 hover:bg-red-100 transition-colors">✕ {t.close}</button>
+        </Modal>
 
+        {/* Changelog */}
+        <Modal open={modal==='changelog'} onClose={()=>setModal(null)} title="CHANGELOG" tc={tc}>
+          <div className="flex flex-col gap-4 overflow-y-auto max-h-[420px]">
+            {[
+              {ver:'v3.2.0',date:'Current',items:[
+                {type:'add',text:t.changelog==='Changelog'?'Language support: English, Turkish, Spanish':'Dil desteği: İngilizce, Türkçe, İspanyolca'},
+                {type:'add',text:'World Clock — click header clock'},
+                {type:'add',text:'Image Tools: edit, upscale, sort (+ image-tools-box CLI)'},
+                {type:'add',text:'Premium section — contact .raldexx on Discord'},
+                {type:'add',text:'First-run feature tour'},
+                {type:'add',text:'Notes + Timer panel'},
+                {type:'add',text:'Artist themes: Madison Beer 💜 & İcardi / Galatasaray 🔴🟡'},
+                {type:'add',text:'Real photos as transparent background in themes'},
+                {type:'add',text:'Top Processes restored & system processes filtered out'},
+                {type:'add',text:'Start with Windows setting'},
+                {type:'fix',text:'Eco mode shows correct message instead of frozen track'},
+                {type:'fix',text:'Actions button theme-consistent'},
+                {type:'fix',text:'Performance labels lowercase (eco/normal/turbo)'},
+                {type:'fix',text:'All text/card colors correct in dark & theme modes'},
+                {type:'fix',text:'Modals open on single click'},
+                {type:'fix',text:'Scrollable layout — content no longer clipped'},
+                {type:'rem',text:'Removed broken Task Manager button'},
+              ]},
+              {ver:'v3.1.0',date:'',items:[{type:'add',text:'Migrated to React + TypeScript + Tailwind'},{type:'add',text:'Framer Motion animations'},{type:'imp',text:'Component architecture with custom hooks'}]},
+              {ver:'v3.0.0',date:'Initial release',items:[{type:'add',text:'Full rewrite from Python/PyQt6 to Tauri + React + Rust'},{type:'add',text:'Spotify integration'},{type:'add',text:'GitHub Actions CI/CD'}]},
+            ].map(({ver,date,items})=>(
+              <div key={ver}>
+                <div className="flex items-center gap-2 mb-2 pb-2 border-b" style={tc?{borderColor:'rgba(255,255,255,0.06)'}:{borderColor:'rgba(0,0,0,0.05)'}}>
+                  <span className="text-[13px] font-extrabold" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{ver}</span></span>
+                  {date&&<span className="text-[10px]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{date}</span></span>}
+                </div>
+                <div className="flex flex-col gap-1">
+                  {items.map((item,i)=>(
+                    <div key={i} className="flex items-start gap-2">
+                      <div className={cn('w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0',item.type==='add'&&'bg-green-400',item.type==='fix'&&'bg-blue-400',item.type==='imp'&&'bg-amber-400',item.type==='rem'&&'bg-red-400')} />
+                      <span className="text-[11px]" style={muted()}><span className={!tc?'text-[#555] dark:text-[#888]':''}>{item.text}</span></span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+          <button onClick={()=>setModal(null)} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+            className={cn('mt-4 w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+            {t.close}
+          </button>
+        </Modal>
+
+        <WorldClockModal open={modal==='worldclock'} onClose={()=>setModal(null)} t={t} tc={tc} />
+        <ImageToolsModal open={modal==='imagetools'} onClose={()=>setModal(null)} tc={tc} />
+        <PremiumModal open={modal==='premium'} onClose={()=>setModal(null)} t={t} tc={tc} />
+        <TourModal open={showTour} onClose={closeTour} t={t} tc={tc} />
+
+      </div>{/* end scrollable */}
     </div>
   );
 }
