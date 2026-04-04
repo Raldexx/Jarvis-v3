@@ -7,7 +7,7 @@ import { MetricCard } from '@/components/MetricCard';
 import { ChartModal } from '@/components/ChartModal';
 import { SpotifyPanel } from '@/components/SpotifyPanel';
 import { fmtSpeed, fmtTemp, fmtUptime, cn } from '@/lib/utils';
-import { ICARDI_IMG } from '@/assets/icardi';
+import { ICARDI_IMG, ICARDI_IMG2 } from '@/assets/icardi';
 import { MADISON_IMG } from '@/assets/madison';
 
 type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'premium' | 'worldclock' | 'imagetools' | null;
@@ -39,6 +39,7 @@ interface ThemeConfig {
   bannerBorder: string;
   bannerText: string;
   photo: string;
+  photo2?: string;
 }
 
 const THEME_CFG: Record<NonNullable<ArtistTheme>, ThemeConfig> = {
@@ -46,8 +47,8 @@ const THEME_CFG: Record<NonNullable<ArtistTheme>, ThemeConfig> = {
     bg:             'linear-gradient(160deg,#0d0018 0%,#1a0030 45%,#2d0a1a 100%)',
     accent:         '#e879f9',
     accentSoft:     '#a21caf',
-    cardBg:         'rgba(30,5,50,0.88)',
-    cardBorder:     'rgba(232,121,249,0.18)',
+    cardBg:         'rgba(10,0,20,0.18)',
+    cardBorder:     'rgba(232,121,249,0.25)',
     textPrimary:    '#f5d0fe',
     textMuted:      'rgba(245,208,254,0.50)',
     sparkline:      '#e879f9',
@@ -62,8 +63,8 @@ const THEME_CFG: Record<NonNullable<ArtistTheme>, ThemeConfig> = {
     bg:             'linear-gradient(160deg,#0a0000 0%,#1f0400 38%,#2e0c00 70%,#1a0900 100%)',
     accent:         '#fbbf24',
     accentSoft:     '#dc2626',
-    cardBg:         'rgba(25,5,0,0.90)',
-    cardBorder:     'rgba(251,191,36,0.22)',
+    cardBg:         'rgba(15,3,0,0.18)',
+    cardBorder:     'rgba(251,191,36,0.28)',
     textPrimary:    '#fef3c7',
     textMuted:      'rgba(254,243,199,0.50)',
     sparkline:      '#f59e0b',
@@ -72,12 +73,13 @@ const THEME_CFG: Record<NonNullable<ArtistTheme>, ThemeConfig> = {
     bannerBg:       'rgba(220,38,38,0.18)',
     bannerBorder:   'rgba(251,191,36,0.38)',
     bannerText:     '#fbbf24',
-    photo:          ICARDI_IMG,
+    photo:          ICARDI_IMG,  // will be randomised at runtime
+    photo2:         ICARDI_IMG2,
   },
 };
 
 // ── Artist Background — only photo + dark veil, zero decorations ─────────────
-function ArtistBackground({ theme }: { theme: NonNullable<ArtistTheme> }) {
+function ArtistBackground({ theme, photo }: { theme: NonNullable<ArtistTheme>; photo: string }) {
   const cfg = THEME_CFG[theme];
   return (
     <div style={{ position:'absolute', inset:0, pointerEvents:'none', overflow:'hidden', zIndex:0, borderRadius:'inherit' }}>
@@ -93,8 +95,8 @@ function ArtistBackground({ theme }: { theme: NonNullable<ArtistTheme> }) {
           height: '100%',
           objectFit: 'cover',
           objectPosition: theme === 'icardi' ? 'center 15%' : 'center 30%',
-          opacity: 0.55,
-          filter: 'brightness(0.75) saturate(0.9)',
+          opacity: 0.85,
+          filter: 'brightness(0.70) saturate(1.0)',
           pointerEvents: 'none',
           userSelect: 'none',
         }}
@@ -102,7 +104,7 @@ function ArtistBackground({ theme }: { theme: NonNullable<ArtistTheme> }) {
       {/* Single dark overlay so text stays readable — that's all */}
       <div style={{
         position: 'absolute', inset: 0,
-        background: 'rgba(0,0,0,0.52)',
+        background: 'rgba(0,0,0,0.28)',
         pointerEvents: 'none',
       }} />
     </div>
@@ -614,7 +616,7 @@ function NotesModal({ open, onClose, t, tc, notes, addNote, removeNote, updateNo
         </div>
         {/* RIGHT — Timer */}
         <div className="flex flex-col gap-3">
-          <div className="text-[9px] font-bold tracking-[0.12em]" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.timer.toUpperCase()}</span></div>
+          <div className="text-[9px] font-bold tracking-[0.12em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.timer.toUpperCase()}</span></div>
           <div className="flex gap-1 no-drag">
             {(['up','down'] as const).map(m=>(
               <button key={m} onClick={()=>{setTimerMode(m);resetTimer();}}
@@ -659,7 +661,17 @@ export default function App() {
   const [chartKey, setChartKey] = useState<ChartKey|null>(null);
   const [showTour, setShowTour] = useState(false);
 
-  const artistTheme: ArtistTheme = spotify.playing ? getArtistTheme(spotify.artist, spotify.track) : null;
+  // Theme: manual override from settings, or auto-detected from playing track
+  const autoTheme: ArtistTheme = spotify.playing ? getArtistTheme(spotify.artist, spotify.track) : null;
+  const artistTheme: ArtistTheme = settings.manualTheme !== 'none' ? settings.manualTheme : autoTheme;
+
+  // Randomise Icardi photo (pick one on mount, re-pick when theme activates)
+  const iciPhotoRef = useRef<string>(Math.random() < 0.5 ? ICARDI_IMG : ICARDI_IMG2);
+  useEffect(() => {
+    if (artistTheme === 'icardi') {
+      iciPhotoRef.current = Math.random() < 0.5 ? ICARDI_IMG : ICARDI_IMG2;
+    }
+  }, [artistTheme]);
   const tc: ThemeConfig|null = artistTheme ? THEME_CFG[artistTheme] : null;
 
   useEffect(() => { document.documentElement.classList.toggle('dark', settings.darkTheme); }, [settings.darkTheme]);
@@ -674,10 +686,10 @@ export default function App() {
 
   // Card style helper
   const cardStyle = (extra?: React.CSSProperties): React.CSSProperties => tc
-    ? { background: tc.cardBg, borderColor: tc.cardBorder, backdropFilter:'blur(12px)', WebkitBackdropFilter:'blur(12px)', ...extra }
+    ? { background: tc.cardBg, borderColor: tc.cardBorder, backdropFilter:'blur(2px)', WebkitBackdropFilter:'blur(2px)', ...extra }
     : (extra || {});
   const txt  = (opacity?: string): React.CSSProperties => tc ? { color: opacity ? `rgba(${hexToRgb(tc.textPrimary)},${opacity})` : tc.textPrimary } : {};
-  const muted = (): React.CSSProperties => tc ? { color: tc.textMuted } : {};
+  const muted = (): React.CSSProperties => tc ? { color: tc.textMuted, textShadow:'0 1px 6px rgba(0,0,0,0.85)' } : {};
 
   function hexToRgb(hex: string): string {
     const r=/^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -715,7 +727,7 @@ export default function App() {
         document.addEventListener('mouseup', onUp);
       }}
     >
-      {tc && <ArtistBackground theme={artistTheme!} />}
+      {tc && <ArtistBackground theme={artistTheme!} photo={artistTheme==='icardi' ? iciPhotoRef.current : THEME_CFG['madison'].photo} />}
 
       {/* Scrollable content layer */}
       <div className="jarvis-scroll">
@@ -807,18 +819,18 @@ export default function App() {
         {/* ═══ SYSTEM + TOP PROCESSES ═══ */}
         <div className="grid grid-cols-2 gap-2">
           <div style={cardStyle()} className={cardCls}>
-            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.system}</span></div>
+            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.system}</span></div>
             <div className="flex flex-col gap-1.5">
               {[['CPU',sysInfo.cpu_name.length>20?sysInfo.cpu_name.slice(0,20)+'…':sysInfo.cpu_name],['Cores',sysInfo.cpu_cores>0?String(sysInfo.cpu_cores):'...'],['RAM',sysInfo.ram_total_gb>0?`${sysInfo.ram_total_gb.toFixed(0)} GB`:'...'],['OS',`${sysInfo.os_name} ${sysInfo.os_version}`.trim()],['Host',sysInfo.hostname]].map(([k,v])=>(
                 <div key={k} className="flex justify-between border-b pb-1.5 last:border-0 last:pb-0" style={tc?{borderColor:'rgba(255,255,255,0.05)'}:{borderColor:'rgba(0,0,0,0.04)'}}>
                   <span className="text-[9px] font-bold tracking-[0.1em]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{k}</span></span>
-                  <span className="text-[10px] font-semibold max-w-[110px] truncate text-right" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{v}</span></span>
+                  <span className="text-[10px] font-semibold max-w-[110px] truncate text-right" style={tc?{color:tc.textPrimary,textShadow:'0 1px 6px rgba(0,0,0,0.9)'}:{}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{v}</span></span>
                 </div>
               ))}
             </div>
           </div>
           <div style={cardStyle()} className={cardCls}>
-            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.topProcesses}</span></div>
+            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.topProcesses}</span></div>
             <div className="flex flex-col gap-1.5">
               {procs.length===0
                 ? <div className="text-[10px] py-2" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>No data</span></div>
@@ -841,7 +853,7 @@ export default function App() {
         {/* ═══ NOTES preview ═══ */}
         <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('notes')}>
           <div className="flex items-center justify-between">
-            <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.notes}</span></div>
+            <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.notes}</span></div>
             <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={tc?{background:'rgba(255,255,255,0.08)',color:tc.textMuted}:{background:'rgba(0,0,0,0.05)',color:'rgba(0,0,0,0.3)'}}>{notes.length}</span>
           </div>
           {notes.length===0
@@ -950,6 +962,19 @@ export default function App() {
                       className={cn('px-2.5 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
                         !tc&&(settings.perfMode===m?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
                       {PERF_CONFIG[m].icon} {PERF_CONFIG[m].label}
+                    </button>
+                  ))}
+                </div>
+              )},
+              {label: settings.language==='tr'?'Tema':'Theme', ctrl:(
+                <div className="flex gap-1 no-drag">
+                  {([['none','⬜ Off'],['icardi','⚽ İcardi'],['madison','💜 Madison']] as const).map(([v,lbl])=>(
+                    <button key={v}
+                      onClick={()=>updateSettings({manualTheme: v as 'none'|'madison'|'icardi'})}
+                      style={settings.manualTheme===v&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+                      className={cn('px-2 py-1.5 rounded-lg text-[10px] font-semibold transition-all',
+                        !tc&&(settings.manualTheme===v?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
+                      {lbl}
                     </button>
                   ))}
                 </div>

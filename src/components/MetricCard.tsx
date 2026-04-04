@@ -33,8 +33,10 @@ export function MetricCard({ label, value, sub, color, history, onClick, childre
         onClick && !tc && 'hover:bg-black/[0.02] dark:hover:bg-white/[0.03]',
         onClick && tc && 'hover:opacity-90',
       )}>
-      <div className="text-[9px] font-bold tracking-[0.12em] uppercase" style={{ color: labelClr }}>{label}</div>
-      <div className="text-[38px] font-extrabold leading-none tracking-tight" style={{ color: bigClr || (tc ? tc.textPrimary : undefined) }}>
+      <div className="text-[9px] font-bold tracking-[0.12em] uppercase" style={{ color: labelClr, textShadow: tc ? '0 1px 4px rgba(0,0,0,0.8)' : undefined }}>{label}</div>
+      <div className="text-[38px] font-extrabold leading-none tracking-tight"
+        style={{ color: bigClr || (tc ? tc.textPrimary : undefined),
+                 textShadow: tc ? '0 1px 8px rgba(0,0,0,0.9), 0 0 20px rgba(0,0,0,0.7)' : undefined }}>
         <span className={!tc ? 'text-[#1a1a1a] dark:text-[#e8e8ea]' : ''}>{value}</span>
       </div>
       {sub && <div className="text-[10px]" style={{ color: tc ? tc.textMuted : undefined }}><span className={!tc ? 'text-black/30 dark:text-white/30' : ''}>{sub}</span></div>}

@@ -356,11 +356,12 @@ export interface Settings {
   language:         Language;
   startWithWindows: boolean;
   tourSeen:         boolean;
+  manualTheme:      'none' | 'madison' | 'icardi';
 }
 
 export function loadSettings(): Settings {
-  try { return { darkTheme: false, alwaysOnTop: false, perfMode: 'normal', language: 'en', startWithWindows: false, tourSeen: false, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
-  catch { return { darkTheme: false, alwaysOnTop: false, perfMode: 'normal', language: 'en', startWithWindows: false, tourSeen: false }; }
+  try { return { darkTheme: false, alwaysOnTop: false, perfMode: 'normal', language: 'en', startWithWindows: false, tourSeen: false, manualTheme: 'none', ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') }; }
+  catch { return { darkTheme: false, alwaysOnTop: false, perfMode: 'normal', language: 'en', startWithWindows: false, tourSeen: false, manualTheme: 'none' }; }
 }
 
 export function saveSettings(s: Partial<Settings>) {
