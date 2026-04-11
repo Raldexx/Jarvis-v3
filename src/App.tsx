@@ -6,11 +6,13 @@ import { Modal } from '@/components/ui/Modal';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartModal } from '@/components/ChartModal';
 import { SpotifyPanel } from '@/components/SpotifyPanel';
+import { JarvisAI } from '@/components/JarvisAI';
+import { TranslatorCard } from '@/components/TranslatorCard';
 import { fmtSpeed, fmtTemp, fmtUptime, cn } from '@/lib/utils';
 import { ICARDI_IMG, ICARDI_IMG2 } from '@/assets/icardi';
 import { MADISON_IMG, MADISON_IMG2 } from '@/assets/madison';
 
-type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'premium' | 'worldclock' | 'imagetools' | null;
+type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'premium' | 'worldclock' | 'imagetools' | 'jarvis' | null;
 type ChartKey = 'cpu' | 'ram' | 'gpu' | 'net' | 'disk';
 type ArtistTheme = 'madison' | 'icardi' | null;
 
@@ -841,19 +843,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* ═══ SYSTEM + TOP PROCESSES ═══ */}
+        {/* ═══ TRANSLATOR + TOP PROCESSES ═══ */}
         <div className="grid grid-cols-2 gap-2">
-          <div style={cardStyle()} className={cardCls}>
-            <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.system}</span></div>
-            <div className="flex flex-col gap-1.5">
-              {[['CPU',sysInfo.cpu_name.length>20?sysInfo.cpu_name.slice(0,20)+'…':sysInfo.cpu_name],['Cores',sysInfo.cpu_cores>0?String(sysInfo.cpu_cores):'...'],['RAM',sysInfo.ram_total_gb>0?`${sysInfo.ram_total_gb.toFixed(0)} GB`:'...'],['OS',`${sysInfo.os_name} ${sysInfo.os_version}`.trim()],['Host',sysInfo.hostname]].map(([k,v])=>(
-                <div key={k} className="flex justify-between border-b pb-1.5 last:border-0 last:pb-0" style={tc?{borderColor:'rgba(255,255,255,0.05)'}:{borderColor:'rgba(0,0,0,0.04)'}}>
-                  <span className="text-[9px] font-bold tracking-[0.1em]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{k}</span></span>
-                  <span className="text-[10px] font-semibold max-w-[110px] truncate text-right" style={tc?{color:tc.textPrimary,textShadow:'0 1px 6px rgba(0,0,0,0.9)'}:{}}><span className={!tc?'text-[#333] dark:text-[#ccc]':''}>{v}</span></span>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TranslatorCard tc={tc} apiKey="" />
           <div style={cardStyle()} className={cardCls}>
             <div className="text-[9px] font-bold tracking-[0.14em] mb-2" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.topProcesses}</span></div>
             <div className="flex flex-col gap-1.5">
@@ -915,6 +907,18 @@ export default function App() {
             </button>
           ))}
         </div>
+        <button onClick={()=>setModal('jarvis')}
+          style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:undefined}
+          className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[11px] font-bold tracking-[0.08em] transition-all duration-150 border no-drag',
+            !tc&&'bg-white dark:bg-[#1c1c1e] border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]',
+            tc&&'hover:opacity-80')}>
+          <span style={{fontSize:16}}>🤖</span>
+          <span style={tc?{color:tc.accent}:{}} className={!tc?'text-blue-500 dark:text-blue-400':''}>JARVIS AI</span>
+          <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full"
+            style={tc?{background:tc.accent+'30',color:tc.accent}:{background:'rgba(59,130,246,0.12)',color:'#3b82f6'}}>
+            Realtime
+          </span>
+        </button>
         <button onClick={()=>setModal('actions')}
           style={tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textPrimary}:undefined}
           className={cn('w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-[11px] font-bold tracking-[0.06em] transition-all duration-150 border no-drag',
@@ -1115,6 +1119,7 @@ export default function App() {
         <ImageToolsModal open={modal==='imagetools'} onClose={()=>setModal(null)} tc={tc} />
         <PremiumModal open={modal==='premium'} onClose={()=>setModal(null)} t={t} tc={tc} />
         <TourModal open={showTour} onClose={closeTour} t={t} tc={tc} />
+        <JarvisAI open={modal==='jarvis'} onClose={()=>setModal(null)} tc={tc} />
 
       </div>{/* end scrollable */}
     </div>
