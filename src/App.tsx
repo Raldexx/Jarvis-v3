@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Settings, BarChart2, Zap, Minus, Maximize2, X, Crown, Image, Clock } from 'lucide-react';
 import { useSystemData, PERF_CONFIG, TRANSLATIONS, type PerfMode, type Language, type I18n } from '@/store/system';
@@ -6,13 +6,13 @@ import { Modal } from '@/components/ui/Modal';
 import { MetricCard } from '@/components/MetricCard';
 import { ChartModal } from '@/components/ChartModal';
 import { SpotifyPanel } from '@/components/SpotifyPanel';
-import { JarvisAI } from '@/components/JarvisAI';
+import { FridayAI } from '@/components/JarvisAI';
 import { TranslatorCard } from '@/components/TranslatorCard';
 import { fmtSpeed, fmtTemp, fmtUptime, cn } from '@/lib/utils';
 import { ICARDI_IMG, ICARDI_IMG2 } from '@/assets/icardi';
 import { MADISON_IMG, MADISON_IMG2 } from '@/assets/madison';
 
-type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'premium' | 'worldclock' | 'imagetools' | 'jarvis' | null;
+type ModalType = 'chart' | 'spotify' | 'settings' | 'stats' | 'actions' | 'changelog' | 'notes' | 'timer' | 'premium' | 'worldclock' | 'imagetools' | 'jarvis' | null;
 type ChartKey = 'cpu' | 'ram' | 'gpu' | 'net' | 'disk';
 type ArtistTheme = 'madison' | 'icardi' | null;
 
@@ -134,8 +134,8 @@ function useClock(lang: Language) {
 // ── Notes ─────────────────────────────────────────────────────────────────────
 interface Note { id: number; text: string; ts: number; }
 function useNotes() {
-  const [notes, setNotes] = useState<Note[]>(() => { try { return JSON.parse(localStorage.getItem('jarvis_notes') || '[]'); } catch { return []; } });
-  const save = (ns: Note[]) => { setNotes(ns); localStorage.setItem('jarvis_notes', JSON.stringify(ns)); };
+  const [notes, setNotes] = useState<Note[]>(() => { try { return JSON.parse(localStorage.getItem('friday_notes') || '[]'); } catch { return []; } });
+  const save = (ns: Note[]) => { setNotes(ns); localStorage.setItem('friday_notes', JSON.stringify(ns)); };
   return {
     notes,
     add: (text: string) => save([{ id: Date.now(), text, ts: Date.now() }, ...notes]),
@@ -253,7 +253,7 @@ function ImageToolsModal({ open, onClose, tc }: { open:boolean; onClose:()=>void
       canvas.width=image.width; canvas.height=image.height;
       const ctx=canvas.getContext('2d')!; ctx.filter=getFilter(); ctx.drawImage(image,0,0);
       const a=document.createElement('a'); a.href=canvas.toDataURL('image/png');
-      a.download='jarvis_'+fileName; a.click();
+      a.download='friday_'+fileName; a.click();
     };
     image.src = img;
   }
@@ -484,7 +484,7 @@ function PremiumModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void
       <div className="flex flex-col items-center gap-4 py-2">
         <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg">👑</div>
         <div className="text-center">
-          <div className="text-[16px] font-extrabold mb-1" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>JARVIS Premium</span></div>
+          <div className="text-[16px] font-extrabold mb-1" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>F.R.I.D.A.Y. Premium</span></div>
           <div className="text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40 max-w-[260px]':''}>Unlock advanced features: Spotify lyrics, custom themes, cloud sync and more.</span></div>
         </div>
         <div className="w-full rounded-2xl border p-4" style={tc?{background:'rgba(251,191,36,0.08)',borderColor:'rgba(251,191,36,0.25)'}:{background:'rgb(255,251,235)',borderColor:'rgb(253,230,138)'}}>
@@ -541,6 +541,103 @@ function TourModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void; t
   );
 }
 
+
+// ── Standalone Timer Modal ────────────────────────────────────────────────────
+function TimerModal({ open, onClose, t, tc }: { open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null }) {
+  const [timerMode, setTimerMode] = useState<'up'|'down'>('up');
+  const [timerSecs, setTimerSecs] = useState(0);
+  const [timerInput, setTimerInput] = useState(300);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
+  const accent = tc?.accent;
+
+  function fmtTime(s:number) {
+    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
+    if(h>0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  }
+
+  useEffect(()=>{
+    if(timerRunning){
+      timerRef.current=setInterval(()=>setTimerSecs(s=>{
+        if(timerMode==='up') return s+1;
+        if(s<=1){
+          setTimerRunning(false);
+          try{ if('Notification' in window&&Notification.permission==='granted'){new Notification('F.R.I.D.A.Y. Timer',{body:'Süre doldu!'})}else alert('⏰ Süre doldu!'); }catch{}
+          return 0;
+        }
+        return s-1;
+      }),1000);
+    } else { if(timerRef.current) clearInterval(timerRef.current); }
+    return ()=>{ if(timerRef.current) clearInterval(timerRef.current); };
+  },[timerRunning,timerMode]);
+
+  function startTimer(){ if(timerMode==='down') setTimerSecs(timerInput); else if(timerSecs===0) setTimerSecs(0); setTimerRunning(true); }
+  function stopTimer(){ setTimerRunning(false); }
+  function resetTimer(){ setTimerRunning(false); setTimerSecs(timerMode==='down'?timerInput:0); }
+
+  const inputCls = cn('flex-1 px-2 py-1 rounded-lg border font-mono text-[12px] focus:outline-none',
+    tc?'bg-white/5 border-white/10 text-white':'border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[#1a1a1a] dark:text-[#e8e8ea]');
+
+  return (
+    <Modal open={open} onClose={()=>{stopTimer();onClose();}} title={t.timer?.toUpperCase()||'TIMER'} tc={tc}>
+      <div className="flex flex-col gap-4 py-1">
+        {/* Mode toggle */}
+        <div className="flex gap-1 no-drag">
+          {(['up','down'] as const).map(m=>(
+            <button key={m} onClick={()=>{setTimerMode(m);resetTimer();}}
+              style={timerMode===m&&tc?{background:tc.accent,color:'#000'}:tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted}:undefined}
+              className={cn('flex-1 py-2 rounded-xl text-[12px] font-semibold transition-all border',
+                !tc&&(timerMode===m?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent':'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 border-transparent'))}>
+              {m==='up'?'▲ Yukarı Say':'▼ Geri Say'}
+            </button>
+          ))}
+        </div>
+
+        {/* Big timer display */}
+        <div className="flex items-center justify-center py-10 rounded-2xl border"
+          style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:{background:'rgba(0,0,0,0.03)',borderColor:'rgba(0,0,0,0.05)'}}>
+          <span className="font-mono text-[56px] font-black tabular-nums" style={{color:accent||undefined}}>
+            <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{fmtTime(timerSecs)}</span>
+          </span>
+        </div>
+
+        {/* Countdown input */}
+        {timerMode==='down'&&!timerRunning&&(
+          <div className="flex items-center gap-2 no-drag">
+            <span className="text-[11px] w-20" style={tc?{color:tc.textMuted}:{}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Saniye</span></span>
+            <input type="number" min={1} max={86400} value={timerInput}
+              onChange={e=>setTimerInput(Math.max(1,+e.target.value))}
+              className={inputCls} />
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="flex gap-2 no-drag">
+          {!timerRunning
+            ?<button onClick={startTimer} style={tc?{background:tc.accent,color:'#000'}:undefined}
+               className={cn('flex-1 py-3 rounded-xl text-[13px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
+               ▶ Başlat</button>
+            :<button onClick={stopTimer}
+               className="flex-1 py-3 rounded-xl bg-amber-500 text-white text-[13px] font-bold">
+               ⏸ Duraklat</button>}
+          <button onClick={resetTimer}
+            style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+            className={cn('flex-1 py-3 rounded-xl text-[13px] font-semibold',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40')}>
+            ↺ Sıfırla</button>
+        </div>
+
+        <button onClick={()=>{stopTimer();onClose();}}
+          style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+          className={cn('w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',
+            !tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+          {t.close}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 // ── Notes + Timer Modal ───────────────────────────────────────────────────────
 function NotesModal({ open, onClose, t, tc, notes, addNote, removeNote, updateNote }: {
   open:boolean; onClose:()=>void; t:I18n; tc:ThemeConfig|null;
@@ -548,110 +645,58 @@ function NotesModal({ open, onClose, t, tc, notes, addNote, removeNote, updateNo
 }) {
   const [noteInput, setNoteInput] = useState('');
   const [editId, setEditId]       = useState<number|null>(null);
-  const [timerMode, setTimerMode] = useState<'up'|'down'>('up');
-  const [timerSecs, setTimerSecs] = useState(0);
-  const [timerInput, setTimerInput] = useState(300);
-  const [timerRunning, setTimerRunning] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   function fmtNoteTs(ts:number) {
     return new Date(ts).toLocaleDateString('en-GB',{day:'2-digit',month:'short'})+' '+new Date(ts).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   }
-  function fmtTime(s:number) {
-    const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sec=s%60;
-    if(h>0) return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-  }
-  useEffect(()=>{
-    if(timerRunning){
-      timerRef.current=setInterval(()=>setTimerSecs(s=>{
-        if(timerMode==='up') return s+1;
-        if(s<=1){ setTimerRunning(false); try{ if('Notification' in window&&Notification.permission==='granted'){new Notification('JARVIS Timer',{body:'Timer finished!'})}else alert('⏰ Timer finished!');}catch{}; return 0; }
-        return s-1;
-      }),1000);
-    } else { if(timerRef.current) clearInterval(timerRef.current); }
-    return ()=>{ if(timerRef.current) clearInterval(timerRef.current); };
-  },[timerRunning,timerMode]);
-
-  function startTimer(){ if(timerMode==='down') setTimerSecs(timerInput); else setTimerSecs(0); setTimerRunning(true); }
-  function stopTimer(){ setTimerRunning(false); }
-  function resetTimer(){ setTimerRunning(false); setTimerSecs(timerMode==='down'?timerInput:0); }
 
   const inputCls = cn('w-full px-3 py-2.5 rounded-xl border text-[12px] resize-none focus:outline-none transition-colors',
     tc ? 'bg-white/5 border-white/10 text-white placeholder-white/30 focus:border-white/30'
        : 'bg-black/[0.02] dark:bg-white/[0.04] border-black/[0.08] dark:border-white/[0.1] text-[#1a1a1a] dark:text-[#e8e8ea] focus:border-blue-300 dark:focus:border-blue-700');
 
   return (
-    <Modal open={open} onClose={()=>{onClose();setEditId(null);setNoteInput('');}} title={t.quickNotes} wide tc={tc}>
-      <div className="grid grid-cols-2 gap-4">
-        {/* LEFT — Notes */}
-        <div className="flex flex-col gap-2">
-          <div className="flex flex-col gap-2 no-drag">
-            <textarea className={inputCls} placeholder={t.notePlaceholder} rows={3} value={noteInput}
-              onChange={e=>setNoteInput(e.target.value)}
-              onKeyDown={e=>{if(e.key==='Enter'&&e.ctrlKey){if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}} />
-            <div className="flex gap-2 justify-end">
-              {editId!==null&&<button onClick={()=>{setEditId(null);setNoteInput('');}} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold',!tc&&'bg-black/[0.05] text-black/40')}>{t.cancel}</button>}
-              <button onClick={()=>{if(!noteInput.trim())return;if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}
-                style={tc?{background:tc.accent,color:'#000'}:undefined}
-                className={cn('px-4 py-1.5 rounded-lg text-[11px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
-                {editId!==null?t.update:t.add}
-              </button>
-            </div>
+    <Modal open={open} onClose={()=>{onClose();setEditId(null);setNoteInput('');}} title={t.quickNotes} tc={tc}>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 no-drag">
+          <textarea className={inputCls} placeholder={t.notePlaceholder} rows={4} value={noteInput}
+            onChange={e=>setNoteInput(e.target.value)}
+            onKeyDown={e=>{if(e.key==='Enter'&&e.ctrlKey){if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}} />
+          <div className="flex gap-2 justify-end">
+            {editId!==null&&<button onClick={()=>{setEditId(null);setNoteInput('');}} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold',!tc&&'bg-black/[0.05] text-black/40')}>{t.cancel}</button>}
+            <button onClick={()=>{if(!noteInput.trim())return;if(editId!==null){updateNote(editId,noteInput);setEditId(null);}else{addNote(noteInput);}setNoteInput('');}}
+              style={tc?{background:tc.accent,color:'#000'}:undefined}
+              className={cn('px-4 py-1.5 rounded-lg text-[11px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>
+              {editId!==null?t.update:t.add}
+            </button>
           </div>
-          <div className="flex flex-col gap-2 overflow-y-auto max-h-[230px]">
-            {notes.length===0
-              ? <div className="text-center py-6 text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.noNotes}</span></div>
-              : notes.map(n=>(
-                <div key={n.id} className="rounded-xl border p-2.5"
-                  style={tc?{background:editId===n.id?'rgba(255,255,255,0.08)':tc.cardBg,borderColor:editId===n.id?tc.accent:tc.cardBorder}:undefined}>
-                  <div className="text-[12px] whitespace-pre-wrap break-words mb-1.5" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{n.text}</span></div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{fmtNoteTs(n.ts)}</span></span>
-                    <div className="flex gap-1.5">
-                      <button onClick={()=>{setEditId(n.id);setNoteInput(n.text);}} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500">{t.edit}</button>
-                      <button onClick={()=>removeNote(n.id)} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400">{t.delete}</button>
-                    </div>
+        </div>
+        <div className="flex flex-col gap-2 overflow-y-auto max-h-[300px]">
+          {notes.length===0
+            ? <div className="text-center py-8 text-[12px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.noNotes}</span></div>
+            : notes.map(n=>(
+              <div key={n.id} className="rounded-xl border p-2.5"
+                style={tc?{background:editId===n.id?'rgba(255,255,255,0.08)':tc.cardBg,borderColor:editId===n.id?tc.accent:tc.cardBorder}:undefined}>
+                <div className="text-[12px] whitespace-pre-wrap break-words mb-1.5" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{n.text}</span></div>
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px]" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/20 dark:text-white/20':''}>{fmtNoteTs(n.ts)}</span></span>
+                  <div className="flex gap-1.5">
+                    <button onClick={()=>{setEditId(n.id);setNoteInput(n.text);}} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-500">{t.edit}</button>
+                    <button onClick={()=>removeNote(n.id)} className="text-[10px] font-semibold px-2 py-0.5 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-400">{t.delete}</button>
                   </div>
                 </div>
-              ))}
-          </div>
-        </div>
-        {/* RIGHT — Timer */}
-        <div className="flex flex-col gap-3">
-          <div className="text-[9px] font-bold tracking-[0.12em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.timer.toUpperCase()}</span></div>
-          <div className="flex gap-1 no-drag">
-            {(['up','down'] as const).map(m=>(
-              <button key={m} onClick={()=>{setTimerMode(m);resetTimer();}}
-                style={timerMode===m&&tc?{background:tc.accent,color:'#000'}:tc?{background:tc.cardBg,borderColor:tc.cardBorder,color:tc.textMuted}:undefined}
-                className={cn('flex-1 py-1.5 rounded-xl text-[11px] font-semibold transition-all border',
-                  !tc&&(timerMode===m?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a] border-transparent':'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 border-transparent'))}>
-                {m==='up'?'▲ Up':'▼ Down'}
-              </button>
+              </div>
             ))}
-          </div>
-          <div className="flex items-center justify-center py-5 rounded-2xl border" style={tc?{background:tc.cardBg,borderColor:tc.cardBorder}:{background:'rgba(0,0,0,0.03)',borderColor:'rgba(0,0,0,0.05)'}}>
-            <span className="font-mono text-[36px] font-extrabold tabular-nums" style={{color:tc?tc.textPrimary:undefined}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{fmtTime(timerSecs)}</span></span>
-          </div>
-          {timerMode==='down'&&!timerRunning&&(
-            <div className="flex items-center gap-2 no-drag">
-              <span className="text-[10px] w-16" style={{color:tc?tc.textMuted:undefined}}><span className={!tc?'text-black/40 dark:text-white/40':''}>Sec</span></span>
-              <input type="number" min={1} max={86400} value={timerInput} onChange={e=>setTimerInput(Math.max(1,+e.target.value))}
-                className={cn('flex-1 px-2 py-1 rounded-lg border font-mono text-[12px] focus:outline-none',
-                  tc?'bg-white/5 border-white/10 text-white':'border-black/[0.08] dark:border-white/[0.1] bg-white dark:bg-[#1c1c1e] text-[#1a1a1a] dark:text-[#e8e8ea]')} />
-            </div>
-          )}
-          <div className="flex gap-2 no-drag">
-            {!timerRunning
-              ? <button onClick={startTimer} style={tc?{background:tc.accent,color:'#000'}:undefined} className={cn('flex-1 py-2 rounded-xl text-[12px] font-bold',!tc&&'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]')}>▶ Start</button>
-              : <button onClick={stopTimer} className="flex-1 py-2 rounded-xl bg-amber-500 text-white text-[12px] font-bold">⏸ Pause</button>}
-            <button onClick={resetTimer} style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined} className={cn('flex-1 py-2 rounded-xl text-[12px] font-semibold',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40')}>↺ Reset</button>
-          </div>
         </div>
+        <button onClick={()=>{onClose();setEditId(null);setNoteInput('');}}
+          style={tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
+          className={cn('mt-1 w-full py-2.5 rounded-xl text-[12px] font-semibold transition-colors',!tc&&'bg-black/[0.04] dark:bg-white/[0.06] text-black/40 dark:text-white/40 hover:bg-black/[0.07]')}>
+          {t.close}
+        </button>
       </div>
     </Modal>
   );
 }
+
 
 // ── Main App ──────────────────────────────────────────────────────────────────
 export default function App() {
@@ -663,6 +708,27 @@ export default function App() {
   const [modal, setModal] = useState<ModalType>(null);
   const [chartKey, setChartKey] = useState<ChartKey|null>(null);
   const [showTour, setShowTour] = useState(false);
+
+  // ── Idle mode (15 min inactivity) ────────────────────────────────────────
+  const [isIdle, setIsIdle] = useState(false);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout>|null>(null);
+  const IDLE_MS = 15 * 60 * 1000;
+
+  const resetIdleTimer = useCallback(() => {
+    setIsIdle(false);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = setTimeout(() => setIsIdle(true), IDLE_MS);
+  }, []);
+
+  useEffect(() => {
+    const events = ['mousemove','mousedown','keydown','touchstart','click','scroll'];
+    events.forEach(e => window.addEventListener(e, resetIdleTimer, { passive: true }));
+    resetIdleTimer();
+    return () => {
+      events.forEach(e => window.removeEventListener(e, resetIdleTimer));
+      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+    };
+  }, [resetIdleTimer]);
 
   // Theme: manual override from settings, or auto-detected from playing track
   const autoTheme: ArtistTheme = spotify.playing ? getArtistTheme(spotify.artist, spotify.track) : null;
@@ -729,7 +795,7 @@ export default function App() {
 
   return (
     <div
-      className={cn('jarvis-root font-sans', bgClass)}
+      className={cn('friday-root font-sans', bgClass)}
       style={appStyle}
       onMouseDown={(e) => {
         const target = e.target as HTMLElement;
@@ -756,8 +822,47 @@ export default function App() {
     >
       {tc && <ArtistBackground theme={artistTheme!} photo={currentPhoto} />}
 
+      {/* ── IDLE OVERLAY ────────────────────────────────────────────────── */}
+      {isIdle && (
+        <div
+          className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-6 cursor-pointer"
+          style={{
+            background: tc ? 'rgba(0,0,0,0.82)' : (settings.darkTheme ? 'rgba(10,10,12,0.92)' : 'rgba(240,240,245,0.92)'),
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+          }}
+          onClick={resetIdleTimer}
+        >
+          {/* Big clock */}
+          <div className="font-mono text-[52px] font-black tabular-nums tracking-tight" style={{color:tc?tc.accent:undefined}}
+            ><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{clock}</span></div>
+
+          {/* Mini metrics row */}
+          <div className="flex gap-3">
+            {[
+              { label:'CPU', value:`${Math.round(sys.cpu_percent)}%`, color:'#3b82f6' },
+              { label:'RAM', value:`${Math.round(sys.ram_percent)}%`, color:'#8b5cf6' },
+              { label:'GPU', value:`${Math.round(0)}%`,             color:'#f59e0b' },
+            ].map(({label,value,color})=>(
+              <div key={label} className="flex flex-col items-center gap-1 px-4 py-3 rounded-2xl border"
+                style={tc
+                  ?{background:tc.cardBg,borderColor:tc.cardBorder}
+                  :{background:'rgba(255,255,255,0.08)',borderColor:'rgba(255,255,255,0.12)'}}>
+                <div className="text-[8px] font-bold tracking-[0.12em]" style={{color: tc?tc.textMuted:'rgba(255,255,255,0.4)'}}>{label}</div>
+                <div className="text-[22px] font-extrabold tabular-nums font-mono" style={{color}}>{value}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Hint */}
+          <div className="text-[10px] font-medium" style={{color:tc?tc.textMuted:'rgba(255,255,255,0.3)'}}>
+            Devam etmek için tıkla
+          </div>
+        </div>
+      )}
+
       {/* Scrollable content layer */}
-      <div className="jarvis-scroll">
+      <div className="friday-scroll">
 
         {/* ═══ HEADER ═══ */}
         <div style={cardStyle()} className={cn(cardCls,'flex items-center justify-between px-4 py-3.5')}>
@@ -765,8 +870,8 @@ export default function App() {
             <div className="text-[9px] font-bold tracking-[0.18em]" style={muted()}><span className={!tc?'text-black/25 dark:text-white/25':''}>{t.systemMonitor}</span></div>
             <div className="flex items-center gap-2 mt-0.5">
               <span className="text-[20px] font-extrabold tracking-tight" style={tc?{color:tc.textPrimary}:{}}>
-                <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>JARVIS</span>
-                <span className="text-[13px] font-normal ml-1" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>v3.2</span></span>
+                <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>F.R.I.D.A.Y.</span>
+                <span className="text-[13px] font-normal ml-1" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>v4.0</span></span>
               </span>
               <AnimatePresence mode="wait">
                 <motion.div key={settings.perfMode}
@@ -867,26 +972,45 @@ export default function App() {
           </div>
         </div>
 
-        {/* ═══ NOTES preview ═══ */}
-        <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('notes')}>
-          <div className="flex items-center justify-between">
-            <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.notes}</span></div>
-            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={tc?{background:'rgba(255,255,255,0.08)',color:tc.textMuted}:{background:'rgba(0,0,0,0.05)',color:'rgba(0,0,0,0.3)'}}>{notes.length}</span>
+        {/* ═══ NOTES + TIMER preview (split 2 cards) ═══ */}
+        <div className="grid grid-cols-2 gap-2">
+          {/* Notes card */}
+          <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('notes')}>
+            <div className="flex items-center justify-between">
+              <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}><span className={!tc?'text-black/30 dark:text-white/30':''}>{t.notes}</span></div>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full" style={tc?{background:'rgba(255,255,255,0.08)',color:tc.textMuted}:{background:'rgba(0,0,0,0.05)',color:'rgba(0,0,0,0.3)'}}>{notes.length}</span>
+            </div>
+            {notes.length===0
+              ? <div className="text-[11px] flex-1 flex items-center" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesAdd}</span></div>
+              : <div className="flex flex-col gap-1 flex-1">
+                  {notes.slice(0,3).map(n=>(
+                    <div key={n.id} className="flex items-center gap-1.5">
+                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{background:tc?tc.accent:'#60a5fa'}} />
+                      <span className="text-[10px] truncate" style={muted()}><span className={!tc?'text-[#555] dark:text-[#999]':''}>{n.text.length>28?n.text.slice(0,28)+'…':n.text}</span></span>
+                    </div>
+                  ))}
+                  {notes.length>3&&<div className="text-[9px] pl-2.5" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesMore(notes.length-3)}</span></div>}
+                </div>
+            }
+            <div className="text-[9px] mt-auto" style={muted()}><span className={!tc?'text-black/15 dark:text-white/15':''}>{t.noteAddBtn}</span></div>
+            <div className="absolute top-3 right-3 text-[9px] font-bold" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>↗</span></div>
           </div>
-          {notes.length===0
-            ? <div className="text-[11px] flex-1 flex items-center" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesAdd}</span></div>
-            : <div className="flex flex-col gap-1 flex-1">
-                {notes.slice(0,3).map(n=>(
-                  <div key={n.id} className="flex items-center gap-1.5">
-                    <div className="w-1 h-1 rounded-full flex-shrink-0" style={{background:tc?tc.accent:'#60a5fa'}} />
-                    <span className="text-[10px] truncate" style={muted()}><span className={!tc?'text-[#555] dark:text-[#999]':''}>{n.text.length>30?n.text.slice(0,30)+'…':n.text}</span></span>
-                  </div>
-                ))}
-                {notes.length>3&&<div className="text-[9px] pl-2.5" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>{t.notesMore(notes.length-3)}</span></div>}
+
+          {/* Timer preview card */}
+          <div style={cardStyle()} className={cn(clickCardCls,'relative flex flex-col gap-1.5')} onClick={()=>setModal('timer')}>
+            <div className="text-[9px] font-bold tracking-[0.14em]" style={{color:tc?tc.accent:undefined,textShadow:tc?'0 1px 5px rgba(0,0,0,0.9)':undefined}}>
+              <span className={!tc?'text-black/30 dark:text-white/30':''}>{t.timer?.toUpperCase() || 'TIMER'}</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center gap-1">
+              <div className="font-mono text-[22px] font-extrabold tabular-nums" style={tc?{color:tc.textPrimary}:{}}>
+                <span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>00:00</span>
               </div>
-          }
-          <div className="text-[9px] mt-auto" style={muted()}><span className={!tc?'text-black/15 dark:text-white/15':''}>{t.noteAddBtn}</span></div>
-          <div className="absolute top-3 right-3 text-[10px] font-bold" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>↗</span></div>
+              <div className="text-[9px]" style={muted()}>
+                <span className={!tc?'text-black/25 dark:text-white/25':''}>Başlamak için tıkla</span>
+              </div>
+            </div>
+            <div className="absolute top-3 right-3 text-[9px] font-bold" style={muted()}><span className={!tc?'text-black/20 dark:text-white/20':''}>↗</span></div>
+          </div>
         </div>
 
         {/* ═══ BOTTOM BUTTONS ═══ */}
@@ -913,7 +1037,7 @@ export default function App() {
             !tc&&'bg-white dark:bg-[#1c1c1e] border-black/[0.07] dark:border-white/[0.08] hover:bg-black/[0.03] dark:hover:bg-white/[0.05]',
             tc&&'hover:opacity-80')}>
           <span style={{fontSize:16}}>🤖</span>
-          <span style={tc?{color:tc.accent}:{}} className={!tc?'text-blue-500 dark:text-blue-400':''}>JARVIS AI</span>
+          <span style={tc?{color:tc.accent}:{}} className={!tc?'text-blue-500 dark:text-blue-400':''}>F.R.I.D.A.Y. AI</span>
           <span className="text-[9px] font-normal px-1.5 py-0.5 rounded-full"
             style={tc?{background:tc.accent+'30',color:tc.accent}:{background:'rgba(59,130,246,0.12)',color:'#3b82f6'}}>
             Realtime
@@ -1071,26 +1195,26 @@ export default function App() {
         <Modal open={modal==='changelog'} onClose={()=>setModal(null)} title="CHANGELOG" tc={tc}>
           <div className="flex flex-col gap-4 overflow-y-auto max-h-[420px]">
             {[
-              {ver:'v3.2.0',date:'Current',items:[
-                {type:'add',text:t.changelog==='Changelog'?'Language support: English, Turkish, Spanish':'Dil desteği: İngilizce, Türkçe, İspanyolca'},
-                {type:'add',text:'World Clock — click header clock'},
-                {type:'add',text:'Image Tools: edit, upscale, sort (+ image-tools-box CLI)'},
-                {type:'add',text:'Premium section — contact .raldexx on Discord'},
-                {type:'add',text:'First-run feature tour'},
-                {type:'add',text:'Notes + Timer panel'},
-                {type:'add',text:'Artist themes: Madison Beer 💜 & İcardi / Galatasaray 🔴🟡'},
-                {type:'add',text:'Real photos as transparent background in themes'},
-                {type:'add',text:'Top Processes restored & system processes filtered out'},
-                {type:'add',text:'Start with Windows setting'},
-                {type:'fix',text:'Eco mode shows correct message instead of frozen track'},
-                {type:'fix',text:'Actions button theme-consistent'},
-                {type:'fix',text:'Performance labels lowercase (eco/normal/turbo)'},
-                {type:'fix',text:'All text/card colors correct in dark & theme modes'},
-                {type:'fix',text:'Modals open on single click'},
-                {type:'fix',text:'Scrollable layout — content no longer clipped'},
-                {type:'rem',text:'Removed broken Task Manager button'},
+              {ver:'v4.0.0',date:'Current — JARVIS → F.R.I.D.A.Y.',items:[
+                {type:'add',text:'🤖 Yeniden adlandırıldı: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)'},
+                {type:'add',text:'🎙 F.R.I.D.A.Y. AI — OpenAI Realtime API (WebRTC, gpt-4o-realtime-preview) ile gerçek zamanlı sesli asistan'},
+                {type:'add',text:'🌀 Animasyonlu 72-bar ses halkası visualizer — mic volumüne gerçek zamanlı tepki'},
+                {type:'add',text:'🚀 Protokol komutları: başlangıç / iş / oyun / gece protokolü'},
+                {type:'add',text:'🧠 Semantic memory — konuşmalardan otomatik öğrenme (fact / preference kategorisi)'},
+                {type:'add',text:'📝 Google Meet entegrasyonu + Obsidian .md not şablonu + AI toplantı özeti'},
+                {type:'add',text:'🔄 AI Çeviri kartı — System Info kartının yerine geçti (8 dil, otomatik debounce)'},
+                {type:'add',text:'⏱ Timer ayrı kart olarak bölündü — Notes ve Timer artık yan yana iki kart'},
+                {type:'add',text:'💤 Idle modu — 15 dk hareketsizlikte büyük saat + CPU/RAM/GPU mini metrik ekranı'},
+                {type:'fix',text:'Eco modda F.R.I.D.A.Y. sesli komut devre dışı bırakıldı'},
+                {type:'fix',text:'Realtime API dil ayarına uygun (TR/EN/ES whisper dili)'},
+                {type:'fix',text:'System Info bilgileri CPU modalına taşındı'},
+                {type:'fix',text:'Google Drive / Calendar bağlantısı F.R.I.D.A.Y. AI üzerinden'},
               ]},
-              {ver:'v3.1.0',date:'',items:[{type:'add',text:'Migrated to React + TypeScript + Tailwind'},{type:'add',text:'Framer Motion animations'},{type:'imp',text:'Component architecture with custom hooks'}]},
+              {ver:'v3.2.0',date:'Son JARVIS sürümü',items:[
+                {type:'add',text:'Language support: English, Turkish, Spanish'},
+                {type:'add',text:'World Clock, Image Tools, Notes+Timer, Artist themes (Madison / İcardi)'},
+                {type:'add',text:'OpenAI Realtime API ilk entegrasyon — bu sürümde tamamlandı'},
+              ]},
               {ver:'v3.0.0',date:'Initial release',items:[{type:'add',text:'Full rewrite from Python/PyQt6 to Tauri + React + Rust'},{type:'add',text:'Spotify integration'},{type:'add',text:'GitHub Actions CI/CD'}]},
             ].map(({ver,date,items})=>(
               <div key={ver}>
@@ -1119,7 +1243,8 @@ export default function App() {
         <ImageToolsModal open={modal==='imagetools'} onClose={()=>setModal(null)} tc={tc} />
         <PremiumModal open={modal==='premium'} onClose={()=>setModal(null)} t={t} tc={tc} />
         <TourModal open={showTour} onClose={closeTour} t={t} tc={tc} />
-        <JarvisAI open={modal==='jarvis'} onClose={()=>setModal(null)} tc={tc} />
+        <TimerModal open={modal==='timer'} onClose={()=>setModal(null)} t={t} tc={tc} />
+        <FridayAI open={modal==='jarvis'} onClose={()=>setModal(null)} tc={tc} perfMode={settings.perfMode} language={settings.language} />
 
       </div>{/* end scrollable */}
     </div>

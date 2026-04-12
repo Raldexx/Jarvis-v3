@@ -34,7 +34,7 @@ export function TranslatorCard({ tc, apiKey }: TranslatorCardProps) {
   const [showAllLangs, setShowAllLangs] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const localKey = localStorage.getItem('jarvis_openai_key') || apiKey;
+  const localKey = localStorage.getItem('friday_openai_key') || apiKey;
 
   const translate = useCallback(async (text: string) => {
     if (!text.trim() || !localKey) {
@@ -181,7 +181,7 @@ export function TranslatorCard({ tc, apiKey }: TranslatorCardProps) {
       )}
 
       <div className="text-[8px] text-center" style={{ color: muted }}>
-        {localKey ? '✓ OpenAI · Otomatik çeviri' : '⚠ JARVIS AI\'ya API anahtarı gir'}
+        {localKey ? '✓ OpenAI · Otomatik çeviri' : '⚠ F.R.I.D.A.Y. AI\'ya API anahtarı gir'}
       </div>
     </div>
   );

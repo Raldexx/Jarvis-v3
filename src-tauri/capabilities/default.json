@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "JARVIS default capabilities",
+  "description": "F.R.I.D.A.Y. default capabilities",
   "windows": [
     "main",
     "stats"
@@ -16,6 +16,7 @@
     "core:window:allow-start-dragging",
     "core:window:allow-set-always-on-top",
     "shell:allow-open",
+    "shell:allow-execute",
     "core:webview:allow-create-webview-window",
     "core:window:allow-show",
     "core:window:allow-set-focus"

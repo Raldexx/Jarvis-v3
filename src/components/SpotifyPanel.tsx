@@ -40,7 +40,7 @@ export function SpotifyPanel({ open, onClose, spotify, t, isEco, tc }: SpotifyPa
       const existing = WebviewWindow.getByLabel('stats');
       const existingWin = await existing;
       if (existingWin) { await existingWin.show(); await existingWin.setFocus(); return; }
-      const win = new WebviewWindow('stats', { url: '/stats', title: 'JARVIS — Spotify Stats', width: 700, height: 780, decorations: false, transparent: true, resizable: true });
+      const win = new WebviewWindow('stats', { url: '/stats', title: 'F.R.I.D.A.Y. — Spotify Stats', width: 700, height: 780, decorations: false, transparent: true, resizable: true });
       win.once('tauri://created', () => win.show());
     } catch(e) { console.warn(e); }
   }

@@ -426,3 +426,70 @@ pub fn sort_files(folder: String, output: String, mode: String) -> Result<String
         Ok(format!("⚠️ {moved} sorted, {} errors: {}", errors.len(), errors.join("; ")))
     }
 }
+
+// ── F.R.I.D.A.Y. System Control Commands ─────────────────────────────────────
+
+/// Open a URL or protocol link using the OS default handler
+#[tauri::command]
+pub fn open_url(url: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(["/c", "start", "", &url])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(format!("Opened: {url}"))
+}
+
+/// Kill a process by name (Windows: taskkill, Linux/Mac: pkill)
+#[tauri::command]
+pub fn kill_process(name: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        let out = std::process::Command::new("taskkill")
+            .args(["/F", "/IM", &name])
+            .output()
+            .map_err(|e| e.to_string())?;
+        return Ok(String::from_utf8_lossy(&out.stdout).to_string());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        let out = std::process::Command::new("pkill")
+            .arg("-f")
+            .arg(&name)
+            .output()
+            .map_err(|e| e.to_string())?;
+        return Ok(String::from_utf8_lossy(&out.stdout).to_string());
+    }
+}
+
+/// Run an arbitrary shell command (use with care — only called from trusted UI)
+#[tauri::command]
+pub fn run_command(command: String) -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    let out = std::process::Command::new("cmd")
+        .args(["/c", &command])
+        .output()
+        .map_err(|e| e.to_string())?;
+    #[cfg(not(target_os = "windows"))]
+    let out = std::process::Command::new("sh")
+        .args(["-c", &command])
+        .output()
+        .map_err(|e| e.to_string())?;
+    Ok(String::from_utf8_lossy(&out.stdout).to_string())
+}

@@ -45,9 +45,12 @@ pub fn run() {
             commands::check_python,
             commands::open_folder_picker,
             commands::sort_files,
+            commands::open_url,
+            commands::kill_process,
+            commands::run_command,
         ])
         .run(tauri::generate_context!())
-        .expect("error running JARVIS");
+        .expect("error running F.R.I.D.A.Y.");
 }
 
 fn toggle_window<R: Runtime>(app: &tauri::AppHandle<R>) {

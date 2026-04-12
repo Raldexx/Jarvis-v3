@@ -39,7 +39,7 @@ html, body {
 }
 
 /* The drag region covers everything EXCEPT .no-drag children */
-.jarvis-root {
+.friday-root {
   width: 100%;
   height: 100%;
   position: relative;
@@ -48,7 +48,7 @@ html, body {
 }
 
 /* The scrollable inner area */
-.jarvis-scroll {
+.friday-scroll {
   width: 100%;
   height: 100%;
   overflow-y: auto;
@@ -63,10 +63,10 @@ html, body {
 }
 
 /* Custom scrollbar */
-.jarvis-scroll::-webkit-scrollbar { width: 3px; }
-.jarvis-scroll::-webkit-scrollbar-track { background: transparent; }
-.jarvis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
-.dark .jarvis-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
+.friday-scroll::-webkit-scrollbar { width: 3px; }
+.friday-scroll::-webkit-scrollbar-track { background: transparent; }
+.friday-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 99px; }
+.dark .friday-scroll::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); }
 
 /* Modal scrollbars */
 ::-webkit-scrollbar { width: 3px; }

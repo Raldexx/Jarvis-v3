@@ -112,7 +112,7 @@ export const TRANSLATIONS: Record<Language, I18n> = {
     worldClock: 'World Clock',
     searchCity: 'Search city...',
     imageTools: 'Image Tools',
-    firstRunTitle: 'Welcome to JARVIS',
+    firstRunTitle: 'Welcome to F.R.I.D.A.Y.',
     firstRunDesc: "Here's a quick tour of all features:",
     tour: {
       cpu: '📊 CPU / RAM / GPU — Click any card to see a 60-second history chart.',
@@ -183,7 +183,7 @@ export const TRANSLATIONS: Record<Language, I18n> = {
     worldClock: 'Dünya Saati',
     searchCity: 'Şehir ara...',
     imageTools: 'Resim Araçları',
-    firstRunTitle: "JARVIS'e Hoş Geldin",
+    firstRunTitle: "F.R.I.D.A.Y.'e Hoş Geldin",
     firstRunDesc: 'Tüm özelliklere hızlı bir bakış:',
     tour: {
       cpu: '📊 CPU / RAM / GPU — 60 saniyelik geçmiş grafiği için herhangi bir karta tıkla.',
@@ -254,7 +254,7 @@ export const TRANSLATIONS: Record<Language, I18n> = {
     worldClock: 'Reloj Mundial',
     searchCity: 'Buscar ciudad...',
     imageTools: 'Herramientas de imagen',
-    firstRunTitle: 'Bienvenido a JARVIS',
+    firstRunTitle: 'Bienvenido a F.R.I.D.A.Y.',
     firstRunDesc: 'Un recorrido rápido por todas las funciones:',
     tour: {
       cpu: '📊 CPU / RAM / GPU — Haz clic en cualquier tarjeta para ver el historial de 60 segundos.',
@@ -347,7 +347,7 @@ export type T = I18n;
 
 // ── Settings persistence ──────────────────────────────────────────────────────
 
-const SETTINGS_KEY = 'jarvis_settings_v3';
+const SETTINGS_KEY = 'friday_settings_v1';
 
 export interface Settings {
   darkTheme:        boolean;
@@ -482,7 +482,7 @@ export function useSystemData() {
       if (sp) {
         setSpotify(prev => {
           if (sp.playing && sp.track && sp.track !== prev.track) {
-            const STATS_KEY = 'jarvis_spotify_stats';
+            const STATS_KEY = 'friday_spotify_stats';
             try {
               const data = JSON.parse(localStorage.getItem(STATS_KEY) || '{"plays":[]}');
               const now = Date.now();

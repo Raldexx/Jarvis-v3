@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Minus, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const STATS_KEY = 'jarvis_spotify_stats';
+const STATS_KEY = 'friday_spotify_stats';
 
 interface Play { track: string; artist: string; ts: number; weekKey: string; monthKey: string; }
 interface Stats { plays: Play[]; }
@@ -97,7 +97,7 @@ export default function StatsApp() {
         <div>
           <div className="text-[9px] font-bold tracking-[0.18em] text-black/25 dark:text-white/25">SYSTEM MONITOR</div>
           <div className="text-[18px] font-extrabold text-[#1a1a1a] dark:text-[#e8e8ea]">
-            JARVIS <span className="text-[13px] font-normal text-spotify">Spotify Stats</span>
+            F.R.I.D.A.Y. <span className="text-[13px] font-normal text-spotify">Spotify Stats</span>
           </div>
         </div>
         <div className="flex flex-col items-end gap-1.5">
@@ -212,7 +212,7 @@ export default function StatsApp() {
         <div className="bg-white dark:bg-[#1c1c1e] rounded-2xl border border-black/[0.07] dark:border-white/[0.08] p-10 text-center">
           <div className="text-4xl mb-3">🎵</div>
           <div className="text-[15px] font-bold text-[#333] dark:text-[#ccc] mb-2">No listening data yet</div>
-          <div className="text-[11px] text-black/30 dark:text-white/30 leading-relaxed">Play something on Spotify while JARVIS is running.<br/>Your stats will appear here automatically.</div>
+          <div className="text-[11px] text-black/30 dark:text-white/30 leading-relaxed">Play something on Spotify while F.R.I.D.A.Y. is running.<br/>Your stats will appear here automatically.</div>
         </div>
       )}
     </div>
