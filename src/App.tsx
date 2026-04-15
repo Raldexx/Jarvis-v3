@@ -1059,7 +1059,7 @@ export default function App() {
         <Modal open={modal==='settings'} onClose={()=>setModal(null)} title="SETTINGS" tc={tc}>
           <div className="flex flex-col gap-0 divide-y" style={tc?{borderColor:'rgba(255,255,255,0.06)'}:{}}>
             {[
-              {label:t.theme, ctrl:(
+              {id:'darkTheme', label:t.theme, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {(['false','true'] as const).map((v,i)=>(
                     <button key={v} onClick={()=>updateSettings({darkTheme:i===1})}
@@ -1071,7 +1071,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label:t.language, ctrl:(
+              {id:'language', label:t.language, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {(['en','tr','es'] as Language[]).map(l=>(
                     <button key={l} onClick={()=>updateSettings({language:l})}
@@ -1083,7 +1083,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label:t.alwaysOnTop, ctrl:(
+              {id:'alwaysOnTop', label:t.alwaysOnTop, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {[true,false].map(v=>(
                     <button key={String(v)} onClick={async()=>{updateSettings({alwaysOnTop:v});try{(await getWin()).setAlwaysOnTop(v);}catch{}}}
@@ -1095,7 +1095,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label:t.startWithWindows, ctrl:(
+              {id:'startWithWindows', label:t.startWithWindows, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {[true,false].map(v=>(
                     <button key={String(v)} onClick={()=>updateSettings({startWithWindows:v})}
@@ -1107,7 +1107,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label:t.performance, ctrl:(
+              {id:'performance', label:t.performance, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {(['eco','normal','turbo'] as PerfMode[]).map(m=>(
                     <button key={m} onClick={()=>updateSettings({perfMode:m})}
@@ -1119,7 +1119,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label: settings.language==='tr'?'Tema':'Theme', ctrl:(
+              {id:'artistTheme', label: t.artistThemeLabel, ctrl:(
                 <div className="flex gap-1 no-drag">
                   {([['none','⬜ Off'],['icardi','⚽ İcardi'],['madison','💜 Madison']] as const).map(([v,lbl])=>(
                     <button key={v}
@@ -1132,7 +1132,7 @@ export default function App() {
                   ))}
                 </div>
               )},
-              {label: settings.language==='tr'?'Foto Rotasyonu':'Photo Rotation', ctrl:(
+              {id:'photoRotation', label: t.photoRotationLabel, ctrl:(
                 <div className="flex items-center gap-2 no-drag">
                   <span className="text-[9px]" style={tc?{color:tc.textMuted}:{}}><span className={!tc?'text-black/30 dark:text-white/30':''}>1 dk</span></span>
                   <div className="flex gap-1">
@@ -1141,14 +1141,14 @@ export default function App() {
                         style={settings.photoRotation===v&&tc?{background:tc.accent,color:'#000'}:tc?{background:'rgba(255,255,255,0.07)',color:tc.textMuted}:undefined}
                         className={cn('px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all',
                           !tc&&(settings.photoRotation===v?'bg-[#1a1a1a] dark:bg-[#e8e8ea] text-white dark:text-[#1a1a1a]':'bg-black/[0.05] dark:bg-white/[0.07] text-black/40 dark:text-white/40'))}>
-                        {v?(settings.language==='tr'?'Açık':'On'):(settings.language==='tr'?'Kapalı':'Off')}
+                        {v?t.on:t.off}
                       </button>
                     ))}
                   </div>
                 </div>
               )},
             ].map(row=>(
-              <div key={row.label} className={cn('flex items-center justify-between py-3',!tc&&'divide-black/[0.05] dark:divide-white/[0.06]')}>
+              <div key={row.id} className={cn('flex items-center justify-between py-3',!tc&&'divide-black/[0.05] dark:divide-white/[0.06]')}>
                 <span className="text-[12px]" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#555] dark:text-[#aaa]':''}>{row.label}</span></span>
                 {row.ctrl}
               </div>
@@ -1194,29 +1194,7 @@ export default function App() {
         {/* Changelog */}
         <Modal open={modal==='changelog'} onClose={()=>setModal(null)} title="CHANGELOG" tc={tc}>
           <div className="flex flex-col gap-4 overflow-y-auto max-h-[420px]">
-            {[
-              {ver:'v4.0.0',date:'Current — JARVIS → F.R.I.D.A.Y.',items:[
-                {type:'add',text:'🤖 Yeniden adlandırıldı: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)'},
-                {type:'add',text:'🎙 F.R.I.D.A.Y. AI — OpenAI Realtime API (WebRTC, gpt-4o-realtime-preview) ile gerçek zamanlı sesli asistan'},
-                {type:'add',text:'🌀 Animasyonlu 72-bar ses halkası visualizer — mic volumüne gerçek zamanlı tepki'},
-                {type:'add',text:'🚀 Protokol komutları: başlangıç / iş / oyun / gece protokolü'},
-                {type:'add',text:'🧠 Semantic memory — konuşmalardan otomatik öğrenme (fact / preference kategorisi)'},
-                {type:'add',text:'📝 Google Meet entegrasyonu + Obsidian .md not şablonu + AI toplantı özeti'},
-                {type:'add',text:'🔄 AI Çeviri kartı — System Info kartının yerine geçti (8 dil, otomatik debounce)'},
-                {type:'add',text:'⏱ Timer ayrı kart olarak bölündü — Notes ve Timer artık yan yana iki kart'},
-                {type:'add',text:'💤 Idle modu — 15 dk hareketsizlikte büyük saat + CPU/RAM/GPU mini metrik ekranı'},
-                {type:'fix',text:'Eco modda F.R.I.D.A.Y. sesli komut devre dışı bırakıldı'},
-                {type:'fix',text:'Realtime API dil ayarına uygun (TR/EN/ES whisper dili)'},
-                {type:'fix',text:'System Info bilgileri CPU modalına taşındı'},
-                {type:'fix',text:'Google Drive / Calendar bağlantısı F.R.I.D.A.Y. AI üzerinden'},
-              ]},
-              {ver:'v3.2.0',date:'Son JARVIS sürümü',items:[
-                {type:'add',text:'Language support: English, Turkish, Spanish'},
-                {type:'add',text:'World Clock, Image Tools, Notes+Timer, Artist themes (Madison / İcardi)'},
-                {type:'add',text:'OpenAI Realtime API ilk entegrasyon — bu sürümde tamamlandı'},
-              ]},
-              {ver:'v3.0.0',date:'Initial release',items:[{type:'add',text:'Full rewrite from Python/PyQt6 to Tauri + React + Rust'},{type:'add',text:'Spotify integration'},{type:'add',text:'GitHub Actions CI/CD'}]},
-            ].map(({ver,date,items})=>(
+            {(t.changelogEntries as ReadonlyArray<{ver:string;date:string;items:ReadonlyArray<{type:string;text:string}>}>).map(({ver,date,items})=>(
               <div key={ver}>
                 <div className="flex items-center gap-2 mb-2 pb-2 border-b" style={tc?{borderColor:'rgba(255,255,255,0.06)'}:{borderColor:'rgba(0,0,0,0.05)'}}>
                   <span className="text-[13px] font-extrabold" style={tc?{color:tc.textPrimary}:{}}><span className={!tc?'text-[#1a1a1a] dark:text-[#e8e8ea]':''}>{ver}</span></span>
@@ -1238,7 +1216,6 @@ export default function App() {
             {t.close}
           </button>
         </Modal>
-
         <WorldClockModal open={modal==='worldclock'} onClose={()=>setModal(null)} t={t} tc={tc} />
         <ImageToolsModal open={modal==='imagetools'} onClose={()=>setModal(null)} tc={tc} />
         <PremiumModal open={modal==='premium'} onClose={()=>setModal(null)} t={t} tc={tc} />

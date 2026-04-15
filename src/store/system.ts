@@ -126,6 +126,44 @@ export const TRANSLATIONS: Record<Language, I18n> = {
       clock: '🕐 Clock — Click the clock to check world times.',
     },
     gotIt: 'Got it!',
+    artistThemeLabel: 'Artist Theme',
+    photoRotationLabel: 'Photo Rotation',
+    changelogEntries: [
+      {
+        ver: 'v4.0.0', date: 'Current — JARVIS → F.R.I.D.A.Y.',
+        items: [
+          { type: 'add', text: '🤖 Renamed: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)' },
+          { type: 'add', text: '🎙 F.R.I.D.A.Y. AI — Real-time voice assistant via OpenAI Realtime API (WebRTC, gpt-4o-realtime-preview)' },
+          { type: 'add', text: '🌀 Animated 72-bar audio ring visualizer — reacts to mic volume in real time' },
+          { type: 'add', text: '🚀 Protocol commands: start / work / gaming / night protocol' },
+          { type: 'add', text: '🧠 Semantic memory — automatic learning from conversations (fact / preference categories)' },
+          { type: 'add', text: '📝 Google Meet integration + Obsidian .md note template + AI meeting summary' },
+          { type: 'add', text: '🔄 AI Translator card — replaced System Info card (8 languages, auto-debounce)' },
+          { type: 'add', text: '⏱ Timer split into its own card — Notes and Timer are now two side-by-side cards' },
+          { type: 'add', text: '💤 Idle mode — after 15 min inactivity shows large clock + CPU/RAM/GPU mini metrics' },
+          { type: 'fix', text: 'F.R.I.D.A.Y. voice commands disabled in Eco mode' },
+          { type: 'fix', text: 'Realtime API language follows app language setting (TR/EN/ES whisper)' },
+          { type: 'fix', text: 'System Info moved into CPU chart modal' },
+          { type: 'fix', text: 'Google Drive / Calendar accessible via F.R.I.D.A.Y. AI' },
+        ],
+      },
+      {
+        ver: 'v3.2.0', date: 'Last JARVIS release',
+        items: [
+          { type: 'add', text: 'Language support: English, Turkish, Spanish' },
+          { type: 'add', text: 'World Clock, Image Tools, Notes+Timer, Artist themes (Madison / İcardi)' },
+          { type: 'add', text: 'OpenAI Realtime API first integration — completed in this version' },
+        ],
+      },
+      {
+        ver: 'v3.0.0', date: 'Initial release',
+        items: [
+          { type: 'add', text: 'Full rewrite from Python/PyQt6 to Tauri + React + Rust' },
+          { type: 'add', text: 'Spotify integration' },
+          { type: 'add', text: 'GitHub Actions CI/CD' },
+        ],
+      },
+    ],
   },
   tr: {
     systemMonitor: 'SİSTEM MONİTÖRÜ',
@@ -197,6 +235,44 @@ export const TRANSLATIONS: Record<Language, I18n> = {
       clock: '🕐 Saat — Dünya saatlerini kontrol etmek için saate tıkla.',
     },
     gotIt: 'Anladım!',
+    artistThemeLabel: 'Sanatçı Teması',
+    photoRotationLabel: 'Foto Rotasyonu',
+    changelogEntries: [
+      {
+        ver: 'v4.0.0', date: 'Güncel — JARVIS → F.R.I.D.A.Y.',
+        items: [
+          { type: 'add', text: '🤖 Yeniden adlandırıldı: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)' },
+          { type: 'add', text: '🎙 F.R.I.D.A.Y. AI — OpenAI Realtime API (WebRTC, gpt-4o-realtime-preview) ile gerçek zamanlı sesli asistan' },
+          { type: 'add', text: '🌀 Animasyonlu 72-bar ses halkası visualizer — mic volumüne gerçek zamanlı tepki' },
+          { type: 'add', text: '🚀 Protokol komutları: başlangıç / iş / oyun / gece protokolü' },
+          { type: 'add', text: '🧠 Semantic memory — konuşmalardan otomatik öğrenme (fact / preference kategorisi)' },
+          { type: 'add', text: '📝 Google Meet entegrasyonu + Obsidian .md not şablonu + AI toplantı özeti' },
+          { type: 'add', text: '🔄 AI Çeviri kartı — System Info kartının yerine geçti (8 dil, otomatik debounce)' },
+          { type: 'add', text: '⏱ Timer ayrı kart olarak bölündü — Notes ve Timer artık yan yana iki kart' },
+          { type: 'add', text: '💤 Idle modu — 15 dk hareketsizlikte büyük saat + CPU/RAM/GPU mini metrik ekranı' },
+          { type: 'fix', text: 'Eco modda F.R.I.D.A.Y. sesli komut devre dışı bırakıldı' },
+          { type: 'fix', text: 'Realtime API dil ayarına uygun (TR/EN/ES whisper dili)' },
+          { type: 'fix', text: 'System Info bilgileri CPU modalına taşındı' },
+          { type: 'fix', text: 'Google Drive / Calendar bağlantısı F.R.I.D.A.Y. AI üzerinden' },
+        ],
+      },
+      {
+        ver: 'v3.2.0', date: 'Son JARVIS sürümü',
+        items: [
+          { type: 'add', text: 'Dil desteği: İngilizce, Türkçe, İspanyolca' },
+          { type: 'add', text: 'Dünya Saati, Resim Araçları, Notlar+Zamanlayıcı, Sanatçı temaları (Madison / İcardi)' },
+          { type: 'add', text: 'OpenAI Realtime API ilk entegrasyon — bu sürümde tamamlandı' },
+        ],
+      },
+      {
+        ver: 'v3.0.0', date: 'İlk sürüm',
+        items: [
+          { type: 'add', text: "Python/PyQt6'dan Tauri + React + Rust'a tam yeniden yazım" },
+          { type: 'add', text: 'Spotify entegrasyonu' },
+          { type: 'add', text: 'GitHub Actions CI/CD' },
+        ],
+      },
+    ],
   },
   es: {
     systemMonitor: 'MONITOR DE SISTEMA',
@@ -268,8 +344,45 @@ export const TRANSLATIONS: Record<Language, I18n> = {
       clock: '🕐 Reloj — Haz clic para ver la hora en otras ciudades.',
     },
     gotIt: '¡Entendido!',
+    artistThemeLabel: 'Tema de artista',
+    photoRotationLabel: 'Rotación de foto',
+    changelogEntries: [
+      {
+        ver: 'v4.0.0', date: 'Actual — JARVIS → F.R.I.D.A.Y.',
+        items: [
+          { type: 'add', text: '🤖 Renombrado: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)' },
+          { type: 'add', text: '🎙 F.R.I.D.A.Y. AI — Asistente de voz en tiempo real con OpenAI Realtime API (WebRTC, gpt-4o-realtime-preview)' },
+          { type: 'add', text: '🌀 Visualizador animado de 72 barras — responde al volumen del micrófono en tiempo real' },
+          { type: 'add', text: '🚀 Comandos de protocolo: inicio / trabajo / juego / protocolo nocturno' },
+          { type: 'add', text: '🧠 Memoria semántica — aprendizaje automático de conversaciones (categorías fact / preference)' },
+          { type: 'add', text: '📝 Integración con Google Meet + plantilla de nota Obsidian .md + resumen de reunión con IA' },
+          { type: 'add', text: '🔄 Tarjeta de traducción con IA — reemplaza la tarjeta de información del sistema (8 idiomas, auto-debounce)' },
+          { type: 'add', text: '⏱ Temporizador separado en su propia tarjeta — Notas y Temporizador ahora son dos tarjetas lado a lado' },
+          { type: 'add', text: '💤 Modo inactivo — tras 15 min sin actividad muestra reloj grande + métricas mini de CPU/RAM/GPU' },
+          { type: 'fix', text: 'Comandos de voz de F.R.I.D.A.Y. desactivados en modo Eco' },
+          { type: 'fix', text: 'Realtime API sigue la configuración de idioma de la app (whisper TR/EN/ES)' },
+          { type: 'fix', text: 'Información del sistema movida al modal del gráfico de CPU' },
+          { type: 'fix', text: 'Google Drive / Calendar accesible desde F.R.I.D.A.Y. AI' },
+        ],
+      },
+      {
+        ver: 'v3.2.0', date: 'Última versión de JARVIS',
+        items: [
+          { type: 'add', text: 'Soporte de idiomas: inglés, turco, español' },
+          { type: 'add', text: 'Reloj mundial, herramientas de imagen, notas+temporizador, temas de artista (Madison / İcardi)' },
+          { type: 'add', text: 'Primera integración de OpenAI Realtime API — completada en esta versión' },
+        ],
+      },
+      {
+        ver: 'v3.0.0', date: 'Lanzamiento inicial',
+        items: [
+          { type: 'add', text: 'Reescritura completa de Python/PyQt6 a Tauri + React + Rust' },
+          { type: 'add', text: 'Integración con Spotify' },
+          { type: 'add', text: 'CI/CD con GitHub Actions' },
+        ],
+      },
+    ],
   },
-} as const;
 
 export interface I18n {
   systemMonitor: string;
@@ -341,6 +454,13 @@ export interface I18n {
     clock: string;
   };
   gotIt: string;
+  artistThemeLabel: string;
+  photoRotationLabel: string;
+  changelogEntries: ReadonlyArray<{
+    ver: string;
+    date: string;
+    items: ReadonlyArray<{ type: string; text: string }>;
+  }>;
 }
 
 export type T = I18n;

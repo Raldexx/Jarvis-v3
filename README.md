@@ -24,7 +24,7 @@
 - CPU & GPU temperature readings (hardware dependent)
 - Disk usage with free space indicator
 - System uptime
-- **Top Processes** — Top 4 processes by CPU usage, live updated
+- **Top Processes** — Top 5 processes by CPU usage, live updated
 
 ### 🌐 Network
 - Real-time download / upload speed
@@ -32,68 +32,94 @@
 
 ### 🎵 Music
 - Spotify integration — detects currently playing track via Windows window title
-- Live animated visualizer
+- Live animated visualizer bars
 - Real session history — tracks accumulate as you listen
 - Lyrics panel (Premium — requires Spotify API token)
-- Apple Music support coming soon
 
 ### 🌍 Language Support
 - English 🇬🇧, Turkish 🇹🇷, Spanish 🇪🇸
-- Language preference is saved to local storage
+- Language preference saved to local storage
+- All UI text, settings labels, and changelog entries change with the selected language
 
-### 📝 Notes & Timer
+### 🤖 F.R.I.D.A.Y. AI
+- Real-time voice assistant powered by **OpenAI Realtime API** (WebRTC, `gpt-4o-realtime-preview`)
+- Animated 72-bar audio ring visualizer reacting to mic volume
+- Protocol commands: start / work / gaming / night protocol
+- Semantic memory — automatically learns facts and preferences from conversations
+- Google Meet integration: generates Obsidian `.md` note template + AI meeting summary
+- Google Drive / Calendar accessible directly via F.R.I.D.A.Y. AI
+- Voice commands automatically disabled in Eco performance mode
+- Whisper language follows the app's language setting (TR / EN / ES)
+
+### 🔄 AI Translator Card
+- Inline translation card replacing the old System Info card
+- Supports 8 languages with automatic debounce (no button needed)
+
+### 📝 Notes
 - Quick notes with add / edit / delete
-- Integrated timer: count-up mode or countdown mode
-- Countdown sends a Windows notification + alert when finished
+- Notes persist via local storage
+
+### ⏱ Timer
+- Standalone Timer card (split from Notes in v4.0)
+- Count-up mode or countdown mode
+- Countdown triggers a Windows notification + alert when finished
+
+### 💤 Idle Mode
+- After 15 minutes of inactivity, switches to a minimal overlay
+- Shows a large clock + CPU / RAM / GPU mini metric display
+- Click anywhere to resume
 
 ### 🕐 World Clock
 - Click the header clock to open the world clock panel
-- Search any city and see its local time live
+- Search any of 20 major cities and see their local time live
 
 ### 🖼 Image Tools
-- Built-in image editor: Grayscale, Invert, Sepia, Blur, Brightness, Contrast
-- Download processed image with one click
+- **Edit tab** — Grayscale, Invert, Sepia, Blur, Brightness, Contrast filters with live preview
+- **Upscale tab** — Browser-side Lanczos-quality upscaling at ×2 / ×3 / ×4; advanced CLI launcher for Smart/Photo/Sharpen algorithms via `image_upscaler.py`
+- **Sort tab** — Sorts files by type (Images, Videos, Music, Documents, Code, Archives, Apps) with Copy or Move mode
 
 ### 👑 Premium
 - Premium section with Discord contact for access (`Raldexx`)
 - Future: Spotify lyrics, cloud sync, custom themes
 
 ### 🎨 Artist Themes
-- **Madison Beer** — plays any Madison Beer song → purple night theme activates
-- **Simge / İcardi** — plays *Aşkın Olayım* → blue Icardi theme activates
-- Theme reverts automatically when song changes
+- **Madison Beer** — play any Madison Beer song → purple night theme activates automatically
+- **Simge / İcardi** — play *Aşkın Olayım* → warm Galatasaray/İcardi theme activates
+- Theme reverts automatically when the song changes
+- Manual theme override available in Settings (Off / İcardi / Madison)
+- Photo rotation: cycles between two artist photos every 60 seconds (toggleable)
 
 ### ⚙️ Settings
 - **Light / Dark theme** toggle
 - **Language** — English, Turkish, Spanish (persisted)
 - **Always on top** toggle
 - **Start with Windows** toggle
-- **Performance mode** — eco / normal / turbo (lowercase labels)
+- **Performance mode** — Eco / Normal / Turbo
+- **Artist Theme** — manual override independent of Spotify playback
+- **Photo Rotation** — enable / disable 60-second photo cycling
 - Re-launch the feature tour at any time
 
 ### 🗺 Feature Tour
-- On first launch, a step-by-step guided tour of all features
-- Can be re-triggered from Settings
+- Step-by-step guided tour on first launch
+- Re-triggerable from Settings
 
 ### ⚡ Quick Actions
-- Restart / Shutdown / Sleep
-- *(Task Manager button removed — was non-functional)*
+- Restart / Shutdown / Sleep with confirmation dialog
 
 ### 🪟 Window
 - Custom frameless window with soft rounded corners
 - Minimize, maximize, close controls
-- Smaller default size (400×780) to avoid taskbar overlap
 - Freely resizable
 
 ---
 
 ## 🖥️ Supported Platforms
 
-| Platform     | Status                                              |
-|--------------|-----------------------------------------------------|
-| Windows 10/11| ✅ Full support                                      |
-| macOS        | ⚠️ Limited (Spotify & some system features unavailable) |
-| Linux        | ⚠️ Limited                                          |
+| Platform      | Status                                                         |
+|---------------|----------------------------------------------------------------|
+| Windows 10/11 | ✅ Full support                                                 |
+| macOS         | ⚠️ Limited (Spotify & some system features unavailable)        |
+| Linux         | ⚠️ Limited                                                     |
 
 ---
 
@@ -116,8 +142,8 @@ node --version
 ### Run locally
 
 ```bash
-git clone https://github.com/Raldexx/Jarvis-v3.git
-cd Jarvis-v3
+git clone https://github.com/Raldexx/FRIDAY.git
+cd FRIDAY
 
 npm install
 npm run tauri dev
@@ -127,44 +153,51 @@ npm run tauri dev
 
 ```bash
 npm run tauri build
-# Output: src-tauri/target/release/bundle/nsis/JARVIS_3.2.0_x64-setup.exe
+# Output: src-tauri/target/release/bundle/nsis/FRIDAY_4.0.0_x64-setup.exe
 ```
 
-Or just push to `main` — GitHub Actions builds it automatically and publishes to Releases.
+Or push to `main` — GitHub Actions builds automatically and publishes to Releases.
 
 ---
 
 ## 🗂️ Project Structure
 
 ```
-Jarvis-v3/
-├── src-tauri/              ← Backend (Rust)
+FRIDAY/
+├── src-tauri/                  ← Backend (Rust)
 │   ├── src/
-│   │   ├── main.rs         ← Entry point
-│   │   ├── lib.rs          ← Tauri setup + system tray
-│   │   └── commands.rs     ← All Tauri commands
+│   │   ├── main.rs             ← Entry point
+│   │   ├── lib.rs              ← Tauri setup + system tray
+│   │   └── commands.rs         ← All Tauri commands
 │   ├── capabilities/
-│   │   └── default.json    ← Window & API permissions
-│   ├── icons/              ← App icons
+│   │   └── default.json        ← Window & API permissions
+│   ├── icons/                  ← App icons
 │   ├── Cargo.toml
 │   ├── build.rs
 │   └── tauri.conf.json
 │
-├── src/                    ← Frontend (React + TypeScript)
-│   ├── App.tsx             ← Main UI + all modals
+├── src/                        ← Frontend (React + TypeScript)
+│   ├── App.tsx                 ← Main UI + all modals
+│   ├── StatsApp.tsx            ← Stats window
 │   ├── store/
-│   │   └── system.ts       ← Data hook + i18n + settings
+│   │   └── system.ts           ← Data hook + i18n (EN/TR/ES) + settings
 │   ├── components/
+│   │   ├── JarvisAI.tsx        ← F.R.I.D.A.Y. AI voice assistant
 │   │   ├── MetricCard.tsx
 │   │   ├── ChartModal.tsx
 │   │   ├── SpotifyPanel.tsx
+│   │   ├── TranslatorCard.tsx
 │   │   └── ui/
 │   │       ├── Card.tsx
 │   │       └── Modal.tsx
+│   ├── assets/
+│   │   ├── icardi.ts           ← İcardi theme photos (base64)
+│   │   └── madison.ts          ← Madison Beer theme photos (base64)
 │   └── index.css
 │
+├── image_upscaler.py           ← CLI tool for advanced image upscaling
 ├── .github/workflows/
-│   └── build.yml           ← Auto-build on push to main
+│   └── build.yml               ← Auto-build on push to main
 ├── package.json
 └── vite.config.ts
 ```
@@ -175,8 +208,9 @@ Jarvis-v3/
 
 - **Spotify detection** works on Windows only, using window title enumeration
 - **GPU temperature** depends on hardware and driver support via `sysinfo`
-- **Session history** in the Music panel resets when JARVIS is closed
+- **Session history** in the Music panel resets when F.R.I.D.A.Y. is closed
 - **Start with Windows** setting is saved but requires Tauri autostart plugin to be wired in `lib.rs` (planned)
+- **F.R.I.D.A.Y. AI** requires an OpenAI API key with Realtime API access
 - Build may take 5–15 minutes on first run as Rust compiles all dependencies
 
 ---
@@ -204,3 +238,33 @@ Jarvis-v3/
 
 Want Premium features (lyrics, cloud sync, themes)?
 Contact on Discord: **Raldexx**
+
+---
+
+## 📋 Changelog
+
+### v4.0.0 — F.R.I.D.A.Y. (Current)
+- 🤖 Renamed: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)
+- 🎙 Real-time voice assistant via OpenAI Realtime API (WebRTC, `gpt-4o-realtime-preview`)
+- 🌀 Animated 72-bar audio ring visualizer reacting to mic volume
+- 🚀 Protocol commands: start / work / gaming / night
+- 🧠 Semantic memory — automatic learning from conversations
+- 📝 Google Meet integration + Obsidian `.md` note template + AI meeting summary
+- 🔄 AI Translator card (replaces System Info card) — 8 languages, auto-debounce
+- ⏱ Timer split into its own standalone card
+- 💤 Idle mode — 15 min inactivity triggers large clock + mini metrics overlay
+- 🐛 Voice commands disabled in Eco mode
+- 🐛 Realtime API whisper language follows app language setting
+- 🐛 System Info moved into CPU chart modal
+- 🐛 Settings rows now use stable keys — language change no longer duplicates theme/rotation rows
+- 🐛 Changelog now fully translates with the selected language
+
+### v3.2.0 — Last JARVIS release
+- Language support: English, Turkish, Spanish
+- World Clock, Image Tools, Notes + Timer, Artist themes (Madison / İcardi)
+- OpenAI Realtime API first integration
+
+### v3.0.0 — Initial release
+- Full rewrite from Python/PyQt6 to Tauri + React + Rust
+- Spotify integration
+- GitHub Actions CI/CD
