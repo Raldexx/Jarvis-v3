@@ -314,7 +314,7 @@ Contact on Discord: **Raldexx**
 
 ## 📋 Changelog
 
-### v4.1.0 — Cross-Platform
+### v4.1.0 — Beta — Cross-Platform
 - 🐧 Full Linux support: Spotify via `playerctl`/D-Bus, power actions via `systemctl`, folder picker via `zenity`/`kdialog`
 - 🍎 Full macOS support: Spotify via AppleScript, power actions via `System Events`, folder picker via `osascript`
 - 🔨 GitHub Actions now builds Windows + macOS (Intel & Apple Silicon) + Linux in parallel
@@ -322,7 +322,7 @@ Contact on Discord: **Raldexx**
 - 🐛 Process list filter updated for Unix process names
 - 🐛 "Start with Windows" renamed to "Start with system" (cross-platform)
 
-### v4.0.0 — F.R.I.D.A.Y. (Previous)
+### v4.0.0 — Alpha — F.R.I.D.A.Y. (Previous)
 - 🤖 Renamed: JARVIS → F.R.I.D.A.Y. (Female Replacement Intelligent Digital Assistant Youth)
 - 🎙 Real-time voice assistant via OpenAI Realtime API (WebRTC, `gpt-4o-realtime-preview`)
 - 🌀 Animated 72-bar audio ring visualizer reacting to mic volume
